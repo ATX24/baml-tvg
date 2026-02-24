@@ -85,19 +85,22 @@ The Go client uses `dlopen` at runtime to load `libbaml_cffi.dylib`/`.so`, downl
 
 The article demonstrates a full working iOS proof-of-concept using `dlopen` with a plugin architecture, loading a framework at runtime on button press and confirming via `lsof` that the framework was NOT loaded at launch time but IS loaded after the button press.
 
-We will support **two linking modes**:
+We will support **two linking modes**, split by platform:
 
-#### Track A: Static Linking via XCFramework (Recommended for iOS)
+#### Default: Static for iOS, Dynamic for macOS
 
-Compile `baml_cffi` as a **static library** (`.a`) and distribute as an XCFramework. The Rust library gets linked directly into the app binary at compile time. No runtime loading needed.
+The primary `language_client_swift` client uses a **hybrid approach**:
 
-- **Pros**: Simplest iOS integration, no `dlopen` concerns, fastest function call overhead, works on all Apple platforms
-- **Cons**: Increases app binary size, requires recompilation for BAML version updates
-- **Distribution**: Swift Package Manager with binary target pointing to XCFramework hosted on GitHub releases
+- **iOS**: Static linking via XCFramework (`.a`). The Rust library gets linked directly into the app binary at compile time. No runtime loading needed. This is the only viable approach for iOS given Apple's restrictions.
+  - **Pros**: Simplest iOS integration, no `dlopen` concerns, fastest function call overhead
+  - **Cons**: Increases app binary size, requires recompilation for BAML version updates
+  - **Distribution**: Swift Package Manager with binary target pointing to XCFramework hosted on GitHub releases
 
-#### Track B: Dynamic Framework with Lazy Loading (Advanced / Plugin Architecture)
+- **macOS**: Dynamic linking with Go-style runtime download. On first use, download `libbaml_cffi.dylib` from GitHub releases, cache locally, and `dlopen` it. This matches the Go client's behavior exactly — no recompilation needed for BAML version updates.
 
-Compile `baml_cffi` as a **dynamic library** and bundle it as a `.framework` inside the app. Use `dlopen` at runtime for lazy loading — exactly as described in the Yelvington article.
+#### Track B (Phase 2): Dynamic Framework with Lazy Loading for iOS
+
+An advanced iOS-only alternative. Compile `baml_cffi` as a **dynamic library** and bundle it as a `.framework` inside the app. Use `dlopen` at runtime for lazy loading — exactly as described in the Yelvington article. The framework is still baked into the `.ipa` (Apple requires this), but it only enters memory when first used.
 
 - **Pros**: Lazy loading means the BAML runtime only enters memory when first used (great for large apps), enables plugin architecture patterns
 - **Cons**: More complex Xcode project setup, requires careful build configuration (disabling automatic linking, configuring `@rpath`, `Shared Frameworks` embed phase)
@@ -110,7 +113,7 @@ Compile `baml_cffi` as a **dynamic library** and bundle it as a `.framework` ins
   6. Load at runtime via `dlopen(Bundle.main.sharedFrameworksPath! + "/BamlCFFI.framework/BamlCFFI", RTLD_NOW)`
   7. Resolve symbols via `dlsym(handle, "symbol_name")`
 
-**We will implement Track A first** as the primary path, then Track B as an opt-in advanced mode.
+**We will implement the default (static iOS + dynamic macOS) first**, then Track B as an opt-in advanced mode for iOS apps with launch-time concerns.
 
 ### Rust Compilation Targets
 
@@ -1037,7 +1040,7 @@ For the dynamic client on iOS, `BamlCFFI.framework` can't be an SPM binary targe
 
 ### 6.5 Repository Structure: Separate Swift Package Repo
 
-SPM subdirectory support is finicky. The cleanest approach (common in iOS ecosystem — Firebase, AWS, etc.) is a **separate repo** that CI auto-updates:
+A separate repo is required because SPM's `.package(url:)` clones the repo and expects `Package.swift` at the root — there is no subdirectory parameter. Pointing to the monorepo would clone all of `boundaryml/baml` and fail to find the right `Package.swift`. SPM subdirectory support has been requested for years but Apple hasn't shipped it. The standard workaround (used by Firebase, AWS SDK, gRPC-Swift) is a **mirror repo** that CI auto-pushes to on release. If SPM ever adds subdirectory support, these repos become unnecessary.
 
 ```
 boundaryml/baml              # Main repo (Rust, Go, Python, CFFI, generators)
@@ -1350,32 +1353,37 @@ integ-tests/swift/
 
 ## Two Language Clients
 
-Rather than git branches, we maintain **two separate language client directories** under `engine/`. They share the same code generator and protobuf definitions but have different runtime linking strategies.
+Rather than git branches, we maintain **two separate language client directories** under `engine/`. They share the same code generator and protobuf definitions but differ in how they handle **iOS** linking. Both use dynamic/download for macOS (like Go).
 
 ```
 engine/
-├── language_client_swift/          # Static linking (this directory)
-├── language_client_swift_dynamic/  # Dynamic/lazy linking
+├── language_client_swift/          # iOS: static | macOS: dynamic/download (this directory)
+├── language_client_swift_dynamic/  # iOS: dynamic/lazy | macOS: dynamic/download
 ├── language_client_go/             # (existing)
 ├── language_client_python/         # (existing)
 └── language_client_cffi/           # (shared — produces both .a and .dylib)
 ```
 
-### `language_client_swift` (static)
+**Key insight: the only real difference between the two clients is the iOS linking strategy.** macOS always uses Go-style dynamic download in both clients.
 
-**Static linking for iOS and macOS.** This is the primary and recommended path.
+### `language_client_swift` (default)
 
-The BAML CFFI Rust library is compiled as a static library (`.a`), bundled into an XCFramework, and linked into the app binary at compile time via Swift Package Manager. There is no runtime library loading — the Rust code becomes part of the app's executable.
+**iOS: static linking. macOS: dynamic linking with Go-style download.** This is the primary and recommended path.
+
+- **iOS**: The BAML CFFI Rust library is compiled as a static library (`.a`), bundled into an XCFramework, and linked into the app binary at compile time via Swift Package Manager. No runtime loading.
+- **macOS**: On first use, downloads `libbaml_cffi.dylib` from GitHub releases, caches in `~/Library/Caches/baml/libs/{VERSION}/`, and `dlopen`s it. Identical to the Go client.
 
 **Rollout order:**
 1. **iOS static** — Cross-compile `libbaml_cffi.a` for `aarch64-apple-ios` + `aarch64-apple-ios-sim` + `x86_64-apple-ios`, package as XCFramework, distribute via SPM binary target.
-2. **macOS static** — Add `aarch64-apple-darwin` + `x86_64-apple-darwin` slices to the same XCFramework.
+2. **macOS dynamic** — Implement Go-style `MacOSDownloader` that downloads `libbaml_cffi.dylib` from GitHub releases at runtime.
 
-**Update model:** To get a new BAML version, the developer updates the SPM dependency version (which points to a new XCFramework zip on GitHub releases), recompiles, and ships a new app build. Same as updating any other Swift package.
+**Update model:**
+- **iOS**: Developer updates the SPM dependency version (which points to a new XCFramework zip on GitHub releases), recompiles, and ships a new app build.
+- **macOS**: Developer bumps the version constant — the new `.dylib` auto-downloads on next run. No recompilation needed for BAML updates.
 
-#### The case for static linking
+#### The case for static linking on iOS
 
-A reasonable question: why bother with a static client at all when dynamic exists? Several reasons:
+A reasonable question: why not just use dynamic for iOS too? Several reasons:
 
 **1. Developer experience is dramatically simpler.**
 Static linking means "add SPM dependency, done." No Xcode project surgery. No disabling automatic linking. No interface frameworks. No build phase reconfiguration. The entire BAML integration is one line in `Package.swift`. This matters — complex Xcode setups are a major source of frustration and support tickets for iOS SDK vendors.
@@ -1401,15 +1409,13 @@ Both approaches add ~17MB to the `.ipa` — with static it's in the executable, 
 **4. No function pointer indirection.**
 Static linking calls C functions directly. Dynamic requires `dlsym` lookups and `unsafeBitCast` to function pointers, adding a (tiny) layer of indirection and a potential source of runtime crashes if signatures drift.
 
-### `language_client_swift_dynamic` (dynamic)
+### `language_client_swift_dynamic` (Phase 2 — iOS lazy loading variant)
 
-**Dynamic linking with lazy loading for iOS. Dynamic linking with runtime download for macOS.**
+**iOS: dynamic linking with lazy loading. macOS: same as default (dynamic/download).**
 
-The BAML CFFI Rust library is compiled as a dynamic library (`.dylib` / `.framework`) and loaded via `dlopen` at runtime rather than at compile/link time. This enables the plugin architecture pattern — the ~17MB BAML runtime only enters memory when the app first uses it.
+The only difference from the default client is the **iOS** strategy. Instead of static linking, the BAML CFFI Rust library is compiled as a dynamic library (`.framework`) and bundled in the app. It loads via `dlopen` at runtime rather than at link time — the ~17MB BAML runtime only enters memory when the app first uses it. The framework is still baked into the `.ipa` at build time (Apple requires this).
 
-**Rollout order:**
-1. **iOS dynamic** — Bundle `BamlCFFI.framework` in the app's `Shared Frameworks` directory. Use interface framework pattern + `dlopen` for lazy loading. The framework is still baked into the `.ipa` at build time — Apple requires this.
-2. **macOS dynamic** — Same `dlopen` approach, but with the **Go-style runtime download**: on first use, download `libbaml_cffi.dylib` from GitHub releases, cache it locally, and `dlopen` from the cache. This is the only platform where the "auto-update" model works.
+This is an advanced option for large iOS apps with launch-time concerns. macOS behavior is identical to `language_client_swift`.
 
 #### Complete Dynamic Client Architecture
 
@@ -1799,56 +1805,54 @@ Two layers of enforcement, both hard blockers:
 
 In practice, we can structure this as a shared `BamlSwiftCore` SPM target (serde, protobuf, callback registry, types) consumed by both `BamlSwift` (static) and `BamlSwiftDynamic` (dynamic), which only differ in how they acquire function pointers to the CFFI.
 
-### Can `language_client_swift_dynamic` pull updates from GitHub like Go does?
+### Why macOS always uses dynamic download (like Go)
 
-**Platform-by-platform:**
+macOS has no App Store restriction on `dlopen` with arbitrary paths. We download `libbaml_cffi.dylib` from GitHub releases, cache in `~/Library/Caches/baml/libs/{VERSION}/`, and `dlopen` it — exact same pattern as `language_client_go/baml_go/lib_common.go`. This is the default for **both** Swift clients on macOS.
+
+### Why iOS can never download at runtime
 
 | Platform | Can download `.dylib` at runtime? | Why? |
 |----------|----------------------------------|------|
-| **macOS** | **Yes** — identical to Go | macOS has no App Store restriction on `dlopen` with arbitrary paths. We can download `libbaml_cffi.dylib` from GitHub releases, cache in `~/Library/Caches/baml/libs/{VERSION}/`, and `dlopen` it. Exact same pattern as `language_client_go/baml_go/lib_common.go`. |
-| **iOS (App Store)** | **No** | Apple Guideline 2.5.2: *"Apps should be self-contained in their bundles... nor may they download, install, or execute code which introduces or changes features or functionality of the app."* All binaries must be present in the `.ipa`, code-signed by the developer, and reviewed by Apple. |
-| **iOS (Enterprise / TestFlight)** | **No** | Same code signing and sandboxing restrictions apply. The app sandbox prevents writing executable code to disk and `dlopen`-ing it. |
+| **macOS** | **Yes** — identical to Go | No sandbox restrictions on `dlopen` with arbitrary paths. |
+| **iOS (App Store)** | **No** | Apple Guideline 2.5.2: *"Apps should be self-contained in their bundles... nor may they download, install, or execute code."* All binaries must be present in the `.ipa`, code-signed by the developer. |
+| **iOS (Enterprise / TestFlight)** | **No** | Same code signing and sandboxing restrictions apply. Writable directories are non-executable; the app bundle is read-only. |
 
-**Bottom line:** On iOS, even with `language_client_swift_dynamic`, the framework binary is frozen at build time. The "dynamic" part only means you control *when* it loads into memory (lazy vs. launch), not *where* it comes from. To update BAML on iOS, you must ship a new app build with the updated framework bundled in.
-
-On macOS, `language_client_swift_dynamic` gives you the full Go experience: the app auto-downloads the matching `libbaml_cffi.dylib` on first run and caches it. Updating BAML means updating the Swift package version constant — the new `.dylib` downloads automatically.
+**Bottom line:** On iOS, the framework binary is always frozen at build time. The only question is *how* it's linked — static (part of the binary) vs. dynamic (bundled `.framework` loaded lazily via `dlopen`). To update BAML on iOS, you must ship a new app build.
 
 ### Summary Matrix
 
 | | `language_client_swift` | `language_client_swift_dynamic` |
 |---|---|---|
 | **iOS linking** | Static (`.a` in XCFramework) | Dynamic (`.framework` in app bundle) |
-| **macOS linking** | Static (`.a` in XCFramework) | Dynamic (`dlopen` from cache / GitHub) |
+| **macOS linking** | Dynamic (`dlopen` from cache / GitHub) | Dynamic (`dlopen` from cache / GitHub) |
 | **iOS library loading** | At app launch (part of binary) | Lazy (on first BAML call via `dlopen`) |
-| **macOS library loading** | At app launch (part of binary) | Lazy (on first BAML call via `dlopen`) |
+| **macOS library loading** | Lazy (on first BAML call via `dlopen`) | Lazy (on first BAML call via `dlopen`) |
 | **iOS update model** | Bump SPM version, rebuild app | Bump SPM version, rebuild app |
-| **macOS update model** | Bump SPM version, rebuild app | Bump version constant, auto-downloads |
+| **macOS update model** | Bump version constant, auto-downloads | Bump version constant, auto-downloads |
 | **iOS binary size impact** | +~17MB to app executable | +~17MB to app bundle (separate file) |
-| **macOS binary size impact** | +~17MB to app executable | ~0 (downloaded to cache on demand) |
-| **Best for** | Most apps, simplest setup | Large apps with launch time concerns, macOS CLI tools |
+| **macOS binary size impact** | ~0 (downloaded to cache on demand) | ~0 (downloaded to cache on demand) |
+| **Best for** | Most apps, simplest iOS setup | Large iOS apps with launch-time concerns |
 
 ---
 
 ## Implementation Order
 
-### Milestone 1: `language_client_swift` (static) — P0
+### Milestone 1: `language_client_swift` (iOS static + macOS dynamic) — P0
 
 | Phase | Dependency |
 |-------|------------|
-| Phase 1: XCFramework pipeline (iOS targets) | None |
-| Phase 2: FFI bridge (static linking, direct C calls) | Phase 1 |
+| Phase 1: XCFramework pipeline (iOS targets only) | None |
+| Phase 2: FFI bridge (static C calls for iOS, `dlopen`/`dlsym` for macOS) | Phase 1 |
 | Phase 3: Protobuf for Swift | Phase 1 (build.rs) |
-| Phase 4: Runtime client | Phase 2 + 3 |
+| Phase 4: Runtime client + macOS dynamic download (Go-style `MacOSDownloader`) | Phase 2 + 3 |
 | Phase 5: Code generator (Rust → Swift) | Phase 4 |
 | Phase 6: SPM packaging | Phase 1 + 4 |
-| Phase 7: Integration tests (iOS simulator) | Phase 5 |
-| Phase 1b: Add macOS slices to XCFramework | Phase 1 |
+| Phase 7: Integration tests (iOS simulator + macOS) | Phase 5 |
 
-### Milestone 2: `language_client_swift_dynamic` — P1
+### Milestone 2: `language_client_swift_dynamic` (iOS lazy loading) — P1
 
 | Phase | Dependency |
 |-------|------------|
-| Phase D-1: Extract shared `BamlSwiftCore` SPM target (serde, protobuf, callbacks) | Milestone 1 |
+| Phase D-1: Extract shared `BamlSwiftCore` SPM target (serde, protobuf, callbacks, macOS downloader) | Milestone 1 |
 | Phase D-2: Interface framework + lazy `dlopen` for iOS | Phase D-1 |
-| Phase D-3: macOS runtime download (Go-style `dlopen` from cache/GitHub) | Phase D-2 |
-| Phase D-4: Integration tests (lazy loading verification via `lsof`) | Phase D-2 + D-3 |
+| Phase D-3: Integration tests (lazy loading verification via `lsof` on iOS simulator) | Phase D-2 |
