@@ -1,0 +1,28 @@
+{% if let Some(docstring) = docstring -%}
+{{ crate::utils::prefix_lines(docstring, "/// ") }}
+{%- endif %}
+public struct {{ name }}: Codable, Sendable {
+    {% for field in fields -%}
+    {% if let Some(docstring) = field.docstring -%}
+    {{ crate::utils::prefix_lines(docstring, "    /// ") }}
+    {% endif -%}
+    public var {{ field.name }}: {{ field.swift_type() }}
+    {% endfor %}
+    {% if dynamic -%}
+    public var dynamicProperties: [String: Any] = [:]
+
+    enum CodingKeys: String, CodingKey {
+        {% for field in fields -%}
+        case {{ field.name }}
+        {% endfor %}
+    }
+    {%- endif %}
+
+    public init({% for field in fields -%}
+        {{ field.name }}: {{ field.swift_type() }}{% if !loop.last %}, {% endif %}
+    {%- endfor %}) {
+        {% for field in fields -%}
+        self.{{ field.name }} = {{ field.name }}
+        {% endfor %}
+    }
+}

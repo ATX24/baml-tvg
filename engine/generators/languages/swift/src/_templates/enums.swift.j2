@@ -1,0 +1,15 @@
+{%- if let Some(docstring) = docstring %}
+{{ crate::utils::prefix_lines(docstring, "/// ") }}
+{%- endif %}
+public enum {{ name }}: String, Codable, Sendable, CaseIterable {
+    {% if values.is_empty() -%}
+    // no values defined for {{ name }}
+    {%- else -%}
+    {%- for (value, m_docstring) in values %}
+    {%- if let Some(docstring) = m_docstring %}
+    {{ crate::utils::prefix_lines(docstring, "    /// ") }}
+    {%- endif %}
+    case {{ value }} = "{{ value }}"
+    {%- endfor %}
+    {%- endif %}
+}

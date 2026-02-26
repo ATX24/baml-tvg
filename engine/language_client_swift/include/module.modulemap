@@ -1,0 +1,6 @@
+module BamlCFFI {
+    header "baml_cffi_generated.h"
+    // No link directive: on macOS, libbaml_cffi.dylib is loaded at runtime via dlopen.
+    // On iOS, the XCFramework binaryTarget provides the symbols to the linker.
+    export *
+}

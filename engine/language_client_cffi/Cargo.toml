@@ -9,7 +9,7 @@ license-file.workspace = true
 [lib]
 # cdylib - Dynamic library for runtime linking (used by Go, Rust, etc.)
 # See https://doc.rust-lang.org/reference/linkage.html
-crate-type = ["cdylib"]
+crate-type = ["cdylib", "staticlib"]
 
 [dependencies]
 libc = "0.2.2"

@@ -51,6 +51,11 @@ pub fn generate_sdk(
             let features = RustLanguageFeatures;
             features.generate_sdk(ir, gen)?
         }
+        GeneratorOutputType::Swift => {
+            use generators_swift::SwiftLanguageFeatures;
+            let features = SwiftLanguageFeatures;
+            features.generate_sdk(ir, gen)?
+        }
     };
 
     // Run on_generate commands

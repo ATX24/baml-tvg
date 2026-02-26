@@ -1,0 +1,17 @@
+{% if let Some(doc) = fn.documentation -%}
+{{ crate::utils::prefix_lines(doc, "/// ") }}
+{%- endif %}
+public func {{ fn.name }}({% for (name, swift_type) in fn.args -%}
+    {{ name }}: {{ swift_type.serialize_type() }}{% if !loop.last %}, {% endif %}
+{%- endfor %}) async throws -> {{ fn.return_type.serialize_type() }} {
+    var kwargs: [String: Any] = [:]
+    {% for (name, _) in fn.args -%}
+    kwargs["{{ name }}"] = {{ name }}
+    {% endfor %}
+    let argsData = try BamlEncoder.encodeFunctionArgs(
+        kwargs: kwargs,
+        envVars: processEnv()
+    )
+    let resultData = try await bamlClient.callFunction(name: "{{ fn.name }}", args: argsData)
+    return try BamlDecoder.decodeResult(resultData)
+}

@@ -3163,6 +3163,7 @@ dependencies = [
  "generators-python",
  "generators-ruby",
  "generators-rust",
+ "generators-swift",
  "generators-typescript",
  "indexmap 2.9.0",
  "internal-baml-core",
@@ -3229,6 +3230,17 @@ dependencies = [
  "prettydiff",
  "test-harness",
  "type_test_spec",
+]
+
+[[package]]
+name = "generators-swift"
+version = "0.219.0"
+dependencies = [
+ "anyhow",
+ "askama",
+ "baml-types",
+ "dir-writer",
+ "internal-baml-core",
 ]
 
 [[package]]

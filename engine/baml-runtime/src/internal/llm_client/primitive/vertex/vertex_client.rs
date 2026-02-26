@@ -5,7 +5,7 @@ use baml_types::BamlMediaContent;
 use chrono::Utc;
 use eventsource_stream::Eventsource;
 use futures::StreamExt;
-#[cfg(not(target_arch = "wasm32"))]
+#[cfg(all(not(target_arch = "wasm32"), not(target_os = "ios")))]
 use gcp_auth::TokenProvider;
 use internal_baml_core::ir::ClientWalker;
 use internal_baml_jinja::{RenderContext_Client, RenderedChatMessage};

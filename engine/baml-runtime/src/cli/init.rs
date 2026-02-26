@@ -522,6 +522,7 @@ impl InitArgs {
             GeneratorOutputType::TypescriptReact => "TypeScript React clients".to_string(),
             GeneratorOutputType::Go => "Go clients".to_string(),
             GeneratorOutputType::Rust => "Rust clients".to_string(),
+            GeneratorOutputType::Swift => "Swift clients".to_string(),
         };
 
         ui_context.add_completion_message(&format!(
@@ -554,7 +555,8 @@ fn generate_main_baml_content(
         | GeneratorOutputType::PythonPydanticV1
         | GeneratorOutputType::Typescript
         | GeneratorOutputType::TypescriptReact
-        | GeneratorOutputType::Rust => format!(
+        | GeneratorOutputType::Rust
+        | GeneratorOutputType::Swift => format!(
             r#"
     // Valid values: "sync", "async"
     // This controls what `b.FunctionName()` will be (sync or async).

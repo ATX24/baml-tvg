@@ -404,6 +404,52 @@ fn main() -> std::io::Result<()> {
             .unwrap_or_else(|_| panic!("Failed to generate {lang} bindings"));
     }
 
+    // Generate Swift protobuf bindings
+    {
+        let lang = "swift";
+        let lang_dir = format!("../language_client_{lang}/Sources/BamlSwift/Proto");
+
+        // Create the output directory if it doesn't exist
+        std::fs::create_dir_all(&lang_dir).ok();
+
+        let mut protoc = protoc_lang_out::ProtocLangOut::new();
+        protoc
+            .lang(lang)
+            .inputs(protos)
+            .includes(["types"])
+            .out_dir(lang_dir);
+
+        // Allow overriding the protoc-gen-swift plugin path
+        if let Ok(path) = std::env::var("PROTOC_GEN_SWIFT_PATH") {
+            protoc.plugin(&path);
+        } else {
+            // Try to find protoc-gen-swift using mise
+            match std::process::Command::new("mise")
+                .args(["which", "protoc-gen-swift"])
+                .output()
+            {
+                Ok(output) if output.status.success() => {
+                    let path = String::from_utf8_lossy(&output.stdout);
+                    let path = path.trim();
+                    eprintln!("Using protoc-gen-swift from mise: {path:?}");
+                    protoc.plugin(path);
+                }
+                Ok(_) => {
+                    eprintln!(
+                        "protoc-gen-swift fallback: mise which protoc-gen-swift failed, relying on PATH"
+                    );
+                }
+                Err(e) => {
+                    eprintln!("protoc-gen-swift fallback: mise command failed ({e}), relying on PATH");
+                }
+            }
+        }
+
+        protoc
+            .run()
+            .unwrap_or_else(|e| eprintln!("Failed to generate {lang} bindings (non-fatal): {e}"));
+    }
+
     // Use cbindgen to generate the C header for your Rust library.
     let crate_dir = std::env::var("CARGO_MANIFEST_DIR").expect("CARGO_MANIFEST_DIR not set");
 
@@ -432,6 +478,19 @@ fn main() -> std::io::Result<()> {
                 panic!("cbindgen generated a diff");
             }
         }
+    }
+
+    // Also generate the C header for the Swift language client
+    {
+        let out_path =
+            Path::new(&crate_dir).join("../language_client_swift/include/baml_cffi_generated.h");
+        std::fs::create_dir_all(out_path.parent().unwrap()).ok();
+        cbindgen::Builder::new()
+            .with_config(cbindgen::Config::from_file("cbindgen.toml").unwrap())
+            .with_crate(".")
+            .generate()
+            .expect("Failed to generate C header for Swift")
+            .write_to_file(out_path);
     }
 
     Ok(())

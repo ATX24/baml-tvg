@@ -128,6 +128,9 @@ pub fn check_version(
                 GeneratorOutputType::Rust => {
                     format!("cargo add baml@{gen_version}")
                 }
+                GeneratorOutputType::Swift => {
+                    format!("update your BamlSwift package to {gen_version}")
+                }
             };
             (
                 match generator_type {

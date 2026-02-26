@@ -1,0 +1,8 @@
+{% if let Some(docstring) = docstring -%}
+{{ crate::utils::prefix_lines(docstring, "/// ") }}
+{%- endif %}
+public enum {{ name }}: Sendable {
+    {% for variant in variants -%}
+    case {{ variant.name }}({{ variant.swift_type() }})
+    {% endfor %}
+}

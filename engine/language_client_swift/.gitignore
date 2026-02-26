@@ -1,0 +1,8 @@
+# XCFramework — built locally by scripts/build-xcframework.sh
+# and uploaded to GitHub Releases as release assets, never committed.
+BamlCFFI.xcframework/
+BamlCFFI.xcframework.zip
+BamlCFFI.xcframework.zip.sha256
+
+# Swift build artifacts
+.build/

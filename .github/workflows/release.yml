@@ -94,6 +94,10 @@ jobs:
   build-jetbrains-release:
     uses: ./.github/workflows/build-jetbrains-release.reusable.yaml
 
+  build-swift-xcframework:
+    uses: ./.github/workflows/build-swift-release.reusable.yaml
+    secrets: inherit
+
   integ-tests:
     uses: ./.github/workflows/integ-tests.yml
 
@@ -107,6 +111,7 @@ jobs:
       - build-cli
       - build-vscode-reusable
       - build-jetbrains-release
+      - build-swift-xcframework
     steps:
       - run: echo "::do-nothing::" >/dev/null
 
@@ -341,6 +346,11 @@ jobs:
           pattern: libbaml-cffi-*
           path: cffi-artifacts
           merge-multiple: true
+      - name: Download XCFramework artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: BamlCFFI-xcframework
+          path: xcframework-artifacts
       - name: Download playground artifacts
         uses: actions/download-artifact@v4
         with:
@@ -353,6 +363,8 @@ jobs:
           ls -R cli-artifacts/
           echo "\nCFFI artifacts:"
           ls -R cffi-artifacts/
+          echo "\nXCFramework artifacts:"
+          ls -R xcframework-artifacts/
           echo "\nPlayground artifacts:"
           ls -R playground-artifacts/
       - name: Prepare changelog
@@ -372,6 +384,8 @@ jobs:
           files: |
             cli-artifacts/**/*
             cffi-artifacts/**/*
+            xcframework-artifacts/BamlCFFI.xcframework.zip
+            xcframework-artifacts/BamlCFFI.xcframework.zip.sha256
             playground-artifacts/playground-dist-*.tar.gz
             playground-artifacts/playground-dist-*.tar.gz.sha256
           fail_on_unmatched_files: true

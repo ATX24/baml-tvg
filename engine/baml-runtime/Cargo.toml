@@ -178,8 +178,7 @@ aws-sdk-bedrockruntime = { version = "=1.106.0", default-features = false, featu
 axum = "0.7.5"
 axum-extra = { version = "0.9.3", features = ["erased-json", "typed-header"] }
 criterion = "0.5.1"
-# depends on ring
-gcp_auth = "0.12.3"
+# gcp_auth moved to its own target section below (not available on iOS)
 hostname = "0.3.1"
 jsonwebtoken = { version = "9.3.0" }
 notify-debouncer-full = "0.3.1"
@@ -197,6 +196,10 @@ supports-color = "3"
 crossterm = "0.28"
 reedline = "0.37"
 
+# gcp_auth depends on platform APIs (gcloud CLI, config_dir) not available on iOS.
+# Vertex AI auth is only needed on desktop/server environments.
+[target.'cfg(all(not(target_arch = "wasm32"), not(target_os = "ios")))'.dependencies]
+gcp_auth = "0.12.3"
 
 [features]
 defaults = ["skip-integ-tests"]

@@ -1,0 +1,35 @@
+{% if let Some(doc) = fn.documentation -%}
+{{ crate::utils::prefix_lines(doc, "/// ") }}
+{%- endif %}
+public func {{ fn.name }}Stream({% for (name, swift_type) in fn.args -%}
+    {{ name }}: {{ swift_type.serialize_type() }}{% if !loop.last %}, {% endif %}
+{%- endfor %}) throws -> AsyncThrowingStream<{{ fn.stream_return_type.serialize_type() }}, Error> {
+    var kwargs: [String: Any] = [:]
+    {% for (name, _) in fn.args -%}
+    kwargs["{{ name }}"] = {{ name }}
+    {% endfor %}
+    let argsData = try BamlEncoder.encodeFunctionArgs(
+        kwargs: kwargs,
+        envVars: processEnv()
+    )
+    let dataStream = bamlClient.callFunctionStream(name: "{{ fn.name }}", args: argsData)
+    return AsyncThrowingStream { continuation in
+        Task {
+            do {
+                for try await chunk in dataStream {
+                    {% if fn.stream_return_type.is_stream_state() -%}
+                    let value: {{ fn.stream_return_type.serialize_type() }} = try BamlDecoder.decodeStreamChunk(chunk)
+                    continuation.yield(value)
+                    {%- else -%}
+                    if let value = try? BamlDecoder.decodeResult(chunk) as {{ fn.stream_return_type.serialize_type() }} {
+                        continuation.yield(value)
+                    }
+                    {%- endif %}
+                }
+                continuation.finish()
+            } catch {
+                continuation.finish(throwing: error)
+            }
+        }
+    }
+}

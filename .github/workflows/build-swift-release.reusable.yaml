@@ -1,0 +1,134 @@
+name: BAML Release - Build Swift XCFramework
+
+on:
+  workflow_call: {}
+  workflow_dispatch: {}
+
+permissions:
+  contents: write
+  id-token: write
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}-build-swift
+  cancel-in-progress: true
+
+jobs:
+  # -----------------------------------------------------------------------
+  # Job 1: Build XCFramework (all slices: ios, ios-sim, macos)
+  # -----------------------------------------------------------------------
+  build-xcframework:
+    name: Build XCFramework
+    runs-on: macos-14
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust targets
+        run: |
+          rustup target add aarch64-apple-ios
+          rustup target add x86_64-apple-ios
+          rustup target add aarch64-apple-ios-sim
+          rustup target add aarch64-apple-darwin
+          rustup target add x86_64-apple-darwin
+
+      - name: Cache Rust build
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: engine
+
+      - name: Build XCFramework
+        run: bash scripts/build-xcframework.sh
+        working-directory: engine/language_client_swift
+
+      - name: Compute SHA256 and SPM checksum
+        id: checksum
+        run: |
+          SHA=$(shasum -a 256 BamlCFFI.xcframework.zip | awk '{print $1}')
+          echo "$SHA" > BamlCFFI.xcframework.zip.sha256
+          SPM=$(swift package compute-checksum BamlCFFI.xcframework.zip)
+          echo "sha256=$SHA" >> $GITHUB_OUTPUT
+          echo "spm_checksum=$SPM" >> $GITHUB_OUTPUT
+        working-directory: engine/language_client_swift
+
+      - name: Upload XCFramework artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: BamlCFFI-xcframework
+          path: |
+            engine/language_client_swift/BamlCFFI.xcframework.zip
+            engine/language_client_swift/BamlCFFI.xcframework.zip.sha256
+          retention-days: 7
+
+  # -----------------------------------------------------------------------
+  # Job 2: macOS integration tests (dylib / dlopen path)
+  # -----------------------------------------------------------------------
+  test-macos:
+    name: Integration Tests (macOS / dlopen)
+    needs: build-xcframework
+    runs-on: macos-14
+    env:
+      OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Cache Rust build
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: engine
+
+      - name: Build macOS dylib
+        run: |
+          cargo build --release -p baml-language-client-cffi --target aarch64-apple-darwin
+        working-directory: engine
+
+      - name: Resolve Swift package
+        run: swift package resolve
+        working-directory: integ-tests/swift
+
+      - name: Run macOS integration tests
+        run: |
+          BAML_LIBRARY_PATH="${{ github.workspace }}/engine/target/aarch64-apple-darwin/release/libbaml_cffi.dylib" \
+          swift test
+        working-directory: integ-tests/swift
+
+  # -----------------------------------------------------------------------
+  # Job 3: iOS simulator integration tests (XCFramework / static path)
+  # -----------------------------------------------------------------------
+  test-ios-simulator:
+    name: Integration Tests (iOS Simulator / static)
+    needs: build-xcframework
+    runs-on: macos-14
+    env:
+      OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download XCFramework artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: BamlCFFI-xcframework
+          path: engine/language_client_swift
+
+      - name: Unzip XCFramework
+        run: unzip -o BamlCFFI.xcframework.zip
+        working-directory: engine/language_client_swift
+
+      - name: Resolve Swift package
+        run: swift package resolve
+        working-directory: integ-tests/swift-ios
+
+      - name: Run iOS simulator integration tests
+        run: |
+          xcodebuild build-for-testing \
+            -scheme BamlIOSIntegTests-Package \
+            -destination 'platform=iOS Simulator,name=iPhone 16,OS=latest'
+          XCTESTRUN=$(find ~/Library/Developer/Xcode/DerivedData -name "*.xctestrun" -path "*/swift-ios*" | sort -t_ -k1 | tail -1)
+          /usr/libexec/PlistBuddy \
+            -c "Add :TestConfigurations:0:TestTargets:0:TestingEnvironmentVariables:OPENROUTER_API_KEY string $OPENROUTER_API_KEY" \
+            "$XCTESTRUN"
+          xcodebuild test-without-building \
+            -xctestrun "$XCTESTRUN" \
+            -destination 'platform=iOS Simulator,name=iPhone 16,OS=latest'
+        working-directory: integ-tests/swift-ios
