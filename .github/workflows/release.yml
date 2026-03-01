@@ -398,3 +398,63 @@ jobs:
     uses: ./.github/workflows/publish-zed-release.reusable.yaml
     secrets:
       SAM_BAML_ZED_GITHUB_TOKEN: ${{ secrets.SAM_BAML_ZED_GITHUB_TOKEN }}
+
+  push-to-swift-prototype:
+    name: Push to baml-swift-prototype (SPM distribution)
+    needs: [publish-to-github, determine-version]
+    if: ${{ needs.determine-version.outputs.is_release_tag == 'true' }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # full history required for git subtree split
+
+      - name: Configure git
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Download XCFramework artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: BamlCFFI-xcframework
+          path: xcframework-artifacts
+
+      - name: Split subtree into dist branch
+        run: |
+          git subtree split \
+            --prefix engine/language_client_swift \
+            -b swift-dist-branch
+
+      - name: Stamp Package.swift on dist branch
+        run: |
+          VERSION="${{ needs.determine-version.outputs.version_string }}"
+          SPM_CHECKSUM=$(cat xcframework-artifacts/BamlCFFI.xcframework.zip.spm_checksum)
+
+          # Check out the dist branch in an isolated worktree
+          git worktree add /tmp/swift-dist swift-dist-branch
+
+          # Stamp Package.distribution.swift → Package.swift in the worktree
+          sed \
+            -e "s/BAML_VERSION/${VERSION}/g" \
+            -e "s/BAML_SPM_CHECKSUM/${SPM_CHECKSUM}/g" \
+            /tmp/swift-dist/Package.distribution.swift > /tmp/swift-dist/Package.swift
+
+          cd /tmp/swift-dist
+          git add Package.swift
+          git commit -m "chore: stamp Package.swift for release ${VERSION}"
+
+      - name: Push to baml-swift-prototype
+        env:
+          BAML_SWIFT_PUSH_TOKEN: ${{ secrets.BAML_SWIFT_PUSH_TOKEN }}
+        run: |
+          VERSION="${{ needs.determine-version.outputs.version_string }}"
+          REMOTE="https://x-access-token:${BAML_SWIFT_PUSH_TOKEN}@github.com/atx24/baml-swift-prototype.git"
+
+          cd /tmp/swift-dist
+          git push "$REMOTE" HEAD:main --force-with-lease
+          git tag "$VERSION"
+          git push "$REMOTE" "$VERSION"

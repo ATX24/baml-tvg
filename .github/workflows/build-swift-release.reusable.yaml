@@ -5,7 +5,7 @@ on:
   workflow_dispatch: {}
 
 permissions:
-  contents: write
+  contents: read
   id-token: write
 
 concurrency:
@@ -46,6 +46,7 @@ jobs:
           SHA=$(shasum -a 256 BamlCFFI.xcframework.zip | awk '{print $1}')
           echo "$SHA" > BamlCFFI.xcframework.zip.sha256
           SPM=$(swift package compute-checksum BamlCFFI.xcframework.zip)
+          echo "$SPM" > BamlCFFI.xcframework.zip.spm_checksum
           echo "sha256=$SHA" >> $GITHUB_OUTPUT
           echo "spm_checksum=$SPM" >> $GITHUB_OUTPUT
         working-directory: engine/language_client_swift
@@ -57,6 +58,7 @@ jobs:
           path: |
             engine/language_client_swift/BamlCFFI.xcframework.zip
             engine/language_client_swift/BamlCFFI.xcframework.zip.sha256
+            engine/language_client_swift/BamlCFFI.xcframework.zip.spm_checksum
           retention-days: 7
 
   # -----------------------------------------------------------------------

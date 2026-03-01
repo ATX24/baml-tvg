@@ -1,13 +1,13 @@
 // swift-tools-version: 5.9
 //
-// DISTRIBUTION PACKAGE — used by the boundaryml/baml-swift mirror repo.
+// DISTRIBUTION PACKAGE — used by the atx24/baml-swift-prototype mirror repo.
 //
 // This file is NOT used for local development (see Package.swift for that).
 // CI runs scripts/stamp-distribution-package.sh to substitute BAML_VERSION
 // and BAML_SPM_CHECKSUM before pushing to the mirror repo.
 //
 // Users add this package via:
-//   .package(url: "https://github.com/boundaryml/baml-swift.git", from: "BAML_VERSION")
+//   .package(url: "https://github.com/atx24/baml-swift-prototype.git", from: "BAML_VERSION")
 
 import PackageDescription
 
@@ -31,7 +31,7 @@ let package = Package(
         // SPM downloads and caches this automatically.
         .binaryTarget(
             name: "BamlCFFI",
-            url: "https://github.com/boundaryml/baml/releases/download/BAML_VERSION/BamlCFFI.xcframework.zip",
+            url: "https://github.com/atx24/baml-tvg/releases/download/BAML_VERSION/BamlCFFI.xcframework.zip",
             checksum: "BAML_SPM_CHECKSUM"
         ),
 

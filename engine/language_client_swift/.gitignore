@@ -3,6 +3,14 @@
 BamlCFFI.xcframework/
 BamlCFFI.xcframework.zip
 BamlCFFI.xcframework.zip.sha256
+BamlCFFI.xcframework.zip.spm_checksum
 
 # Swift build artifacts
 .build/
+
+# Xcode user data
+xcuserdata/
+*.xcuserstate
+
+# macOS
+.DS_Store
