@@ -31,14 +31,6 @@ jobs:
           rustup target add aarch64-apple-darwin
           rustup target add x86_64-apple-darwin
 
-      - name: Setup Go
-        uses: ./.github/actions/setup-go
-
-      - name: Install protoc-gen-go
-        uses: jdx/mise-action@v2
-        with:
-          install_args: "protoc-gen-go"
-
       - name: Cache Rust build
         uses: Swatinem/rust-cache@v2
         with:

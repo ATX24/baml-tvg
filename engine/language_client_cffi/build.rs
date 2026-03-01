@@ -356,54 +356,6 @@ fn main() -> std::io::Result<()> {
 
     prost_build::compile_protos(&protos, &["types"])?;
 
-    {
-        let lang = "go";
-        let lang_dir = format!("../language_client_{lang}/pkg");
-        // let args: flatc_rust::Args<'_> = flatc_rust::Args {
-        //     lang,
-        //     inputs: &[Path::new("types/cffi.fbs")],
-        //     out_dir: Path::new(&lang_dir),
-        //     ..Default::default()
-        // };
-
-        let mut protoc = protoc_lang_out::ProtocLangOut::new();
-        protoc
-            .lang(lang)
-            .inputs(protos)
-            .includes(["types"])
-            .out_dir(lang_dir);
-
-        // Allow overriding the protoc-gen-go plugin path
-        if let Ok(path) = std::env::var("PROTOC_GEN_GO_PATH") {
-            protoc.plugin(&path);
-        } else {
-            // Try to find protoc-gen-go using mise
-            match std::process::Command::new("mise")
-                .args(["which", "protoc-gen-go"])
-                .output()
-            {
-                Ok(output) if output.status.success() => {
-                    let path = String::from_utf8_lossy(&output.stdout);
-                    let path = path.trim();
-                    eprintln!("Using protoc-gen-go from mise: {path:?}");
-                    protoc.plugin(path);
-                }
-                Ok(_) => {
-                    eprintln!(
-                        "protoc-gen-go fallback: mise which protoc-gen-go failed, relying on PATH"
-                    );
-                }
-                Err(e) => {
-                    eprintln!("protoc-gen-go fallback: mise command failed ({e}), relying on PATH");
-                }
-            }
-        }
-
-        protoc
-            .run()
-            .unwrap_or_else(|_| panic!("Failed to generate {lang} bindings"));
-    }
-
     // Generate Swift protobuf bindings
     {
         let lang = "swift";
