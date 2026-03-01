@@ -1,0 +1,407 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 56;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		A00100000000000000000040 /* ScribeApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = A00100000000000000000031 /* ScribeApp.swift */; };
+		A00100000000000000000041 /* ContentView.swift in Sources */ = {isa = PBXBuildFile; fileRef = A00100000000000000000032 /* ContentView.swift */; };
+		A00100000000000000000042 /* AnalysisViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = A00100000000000000000033 /* AnalysisViewModel.swift */; };
+		A00100000000000000000043 /* InputCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = A00100000000000000000034 /* InputCard.swift */; };
+		A00100000000000000000044 /* ResultsCard.swift in Sources */ = {isa = PBXBuildFile; fileRef = A00100000000000000000035 /* ResultsCard.swift */; };
+		A00100000000000000000045 /* ThemeChip.swift in Sources */ = {isa = PBXBuildFile; fileRef = A00100000000000000000036 /* ThemeChip.swift */; };
+		A00100000000000000000046 /* SentimentBadge.swift in Sources */ = {isa = PBXBuildFile; fileRef = A00100000000000000000037 /* SentimentBadge.swift */; };
+		A00100000000000000000047 /* BamlClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = A00100000000000000000038 /* BamlClient.swift */; };
+		A00100000000000000000048 /* BamlFunctions.swift in Sources */ = {isa = PBXBuildFile; fileRef = A00100000000000000000039 /* BamlFunctions.swift */; };
+		A00100000000000000000049 /* BamlFunctionsStream.swift in Sources */ = {isa = PBXBuildFile; fileRef = A0010000000000000000003A /* BamlFunctionsStream.swift */; };
+		A0010000000000000000004A /* BamlTypes.swift in Sources */ = {isa = PBXBuildFile; fileRef = A0010000000000000000003B /* BamlTypes.swift */; };
+		A0010000000000000000004B /* BamlEnums.swift in Sources */ = {isa = PBXBuildFile; fileRef = A0010000000000000000003C /* BamlEnums.swift */; };
+		A0010000000000000000004C /* BamlCFFI.xcframework in Frameworks */ = {isa = PBXBuildFile; fileRef = A0010000000000000000003D /* BamlCFFI.xcframework */; };
+		A0010000000000000000004D /* BamlSwift in Frameworks */ = {isa = PBXBuildFile; productRef = A00100000000000000000051 /* BamlSwift */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXFileReference section */
+		A00100000000000000000030 /* Scribe.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Scribe.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		A00100000000000000000031 /* ScribeApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ScribeApp.swift; sourceTree = "<group>"; };
+		A00100000000000000000032 /* ContentView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ContentView.swift; sourceTree = "<group>"; };
+		A00100000000000000000033 /* AnalysisViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AnalysisViewModel.swift; sourceTree = "<group>"; };
+		A00100000000000000000034 /* InputCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InputCard.swift; sourceTree = "<group>"; };
+		A00100000000000000000035 /* ResultsCard.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ResultsCard.swift; sourceTree = "<group>"; };
+		A00100000000000000000036 /* ThemeChip.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ThemeChip.swift; sourceTree = "<group>"; };
+		A00100000000000000000037 /* SentimentBadge.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SentimentBadge.swift; sourceTree = "<group>"; };
+		A00100000000000000000038 /* BamlClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BamlClient.swift; sourceTree = "<group>"; };
+		A00100000000000000000039 /* BamlFunctions.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BamlFunctions.swift; sourceTree = "<group>"; };
+		A0010000000000000000003A /* BamlFunctionsStream.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BamlFunctionsStream.swift; sourceTree = "<group>"; };
+		A0010000000000000000003B /* BamlTypes.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BamlTypes.swift; sourceTree = "<group>"; };
+		A0010000000000000000003C /* BamlEnums.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BamlEnums.swift; sourceTree = "<group>"; };
+		A0010000000000000000003D /* BamlCFFI.xcframework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.xcframework; name = BamlCFFI.xcframework; path = "../../../BamlCFFI.xcframework"; sourceTree = SOURCE_ROOT; };
+/* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		A00100000000000000000021 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				A0010000000000000000004C /* BamlCFFI.xcframework in Frameworks */,
+				A0010000000000000000004D /* BamlSwift in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		A00100000000000000000010 /* root */ = {
+			isa = PBXGroup;
+			children = (
+				A00100000000000000000011 /* Scribe */,
+				A0010000000000000000003D /* BamlCFFI.xcframework */,
+				A00100000000000000000014 /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		A00100000000000000000011 /* Scribe */ = {
+			isa = PBXGroup;
+			children = (
+				A00100000000000000000031 /* ScribeApp.swift */,
+				A00100000000000000000032 /* ContentView.swift */,
+				A00100000000000000000033 /* AnalysisViewModel.swift */,
+				A00100000000000000000012 /* Views */,
+				A00100000000000000000013 /* baml_client */,
+			);
+			path = Scribe;
+			sourceTree = SOURCE_ROOT;
+		};
+		A00100000000000000000012 /* Views */ = {
+			isa = PBXGroup;
+			children = (
+				A00100000000000000000034 /* InputCard.swift */,
+				A00100000000000000000035 /* ResultsCard.swift */,
+				A00100000000000000000036 /* ThemeChip.swift */,
+				A00100000000000000000037 /* SentimentBadge.swift */,
+			);
+			path = Views;
+			sourceTree = "<group>";
+		};
+		A00100000000000000000013 /* baml_client */ = {
+			isa = PBXGroup;
+			children = (
+				A00100000000000000000038 /* BamlClient.swift */,
+				A00100000000000000000039 /* BamlFunctions.swift */,
+				A0010000000000000000003A /* BamlFunctionsStream.swift */,
+				A0010000000000000000003B /* BamlTypes.swift */,
+				A0010000000000000000003C /* BamlEnums.swift */,
+			);
+			path = baml_client;
+			sourceTree = "<group>";
+		};
+		A00100000000000000000014 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				A00100000000000000000030 /* Scribe.app */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		A00100000000000000000002 /* Scribe */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = A00100000000000000000004 /* Build configuration list for PBXNativeTarget "Scribe" */;
+			buildPhases = (
+				A00100000000000000000020 /* Sources */,
+				A00100000000000000000021 /* Frameworks */,
+				A00100000000000000000022 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = Scribe;
+			packageProductDependencies = (
+				A00100000000000000000051 /* BamlSwift */,
+			);
+			productName = Scribe;
+			productReference = A00100000000000000000030 /* Scribe.app */;
+			productType = "com.apple.product-type.application";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		A00100000000000000000001 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = 1;
+				LastSwiftUpdateCheck = 1500;
+				LastUpgradeCheck = 1500;
+				TargetAttributes = {
+					A00100000000000000000002 = {
+						CreatedOnToolsVersion = 15.0;
+					};
+				};
+			};
+			buildConfigurationList = A00100000000000000000003 /* Build configuration list for PBXProject "Scribe" */;
+			compatibilityVersion = "Xcode 14.0";
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				en,
+				Base,
+			);
+			mainGroup = A00100000000000000000010;
+			packageReferences = (
+				A00100000000000000000050 /* XCLocalSwiftPackageReference "../../../" */,
+			);
+			productRefGroup = A00100000000000000000014 /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				A00100000000000000000002 /* Scribe */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		A00100000000000000000022 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		A00100000000000000000020 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				A00100000000000000000040 /* ScribeApp.swift in Sources */,
+				A00100000000000000000041 /* ContentView.swift in Sources */,
+				A00100000000000000000042 /* AnalysisViewModel.swift in Sources */,
+				A00100000000000000000043 /* InputCard.swift in Sources */,
+				A00100000000000000000044 /* ResultsCard.swift in Sources */,
+				A00100000000000000000045 /* ThemeChip.swift in Sources */,
+				A00100000000000000000046 /* SentimentBadge.swift in Sources */,
+				A00100000000000000000047 /* BamlClient.swift in Sources */,
+				A00100000000000000000048 /* BamlFunctions.swift in Sources */,
+				A00100000000000000000049 /* BamlFunctionsStream.swift in Sources */,
+				A0010000000000000000004A /* BamlTypes.swift in Sources */,
+				A0010000000000000000004B /* BamlEnums.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin XCBuildConfiguration section */
+		A00100000000000000000005 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu17;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"DEBUG=1",
+					"$(inherited)",
+				);
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				SDKROOT = iphoneos;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+			};
+			name = Debug;
+		};
+		A00100000000000000000006 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu17;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
+				MTL_FAST_MATH = YES;
+				SDKROOT = iphoneos;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
+				VALIDATE_PRODUCT = YES;
+			};
+			name = Release;
+		};
+		A00100000000000000000007 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_CFBundleDisplayName = Scribe;
+				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
+				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
+				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.baml.Scribe;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		A00100000000000000000008 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_CFBundleDisplayName = Scribe;
+				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
+				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
+				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight";
+				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.baml.Scribe;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		A00100000000000000000003 /* Build configuration list for PBXProject "Scribe" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				A00100000000000000000005 /* Debug */,
+				A00100000000000000000006 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		A00100000000000000000004 /* Build configuration list for PBXNativeTarget "Scribe" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				A00100000000000000000007 /* Debug */,
+				A00100000000000000000008 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+/* End XCConfigurationList section */
+
+/* Begin XCLocalSwiftPackageReference section */
+		A00100000000000000000050 /* XCLocalSwiftPackageReference "../../../" */ = {
+			isa = XCLocalSwiftPackageReference;
+			relativePath = "../../../";
+		};
+/* End XCLocalSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		A00100000000000000000051 /* BamlSwift */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = A00100000000000000000050 /* XCLocalSwiftPackageReference "../../../" */;
+			productName = BamlSwift;
+		};
+/* End XCSwiftPackageProductDependency section */
+
+	};
+	rootObject = A00100000000000000000001 /* Project object */;
+}

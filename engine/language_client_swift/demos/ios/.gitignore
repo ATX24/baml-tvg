@@ -1,0 +1,10 @@
+# Xcode build artifacts
+build/
+DerivedData/
+*.xcuserstate
+xcuserdata/
+Scribe.xcodeproj/xcuserdata/
+Scribe.xcodeproj/project.xcworkspace/xcuserdata/
+
+# SPM resolution cache
+*.resolved
