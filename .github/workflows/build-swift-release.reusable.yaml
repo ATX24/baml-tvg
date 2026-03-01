@@ -117,20 +117,23 @@ jobs:
         run: unzip -o BamlCFFI.xcframework.zip
         working-directory: engine/language_client_swift
 
-      - name: Resolve Swift package
-        run: swift package resolve
+      - name: Resolve XCFramework symlink
+        # xcodebuild cannot follow symlinks for local binaryTargets — replace
+        # the symlink with the real directory so scheme generation succeeds.
+        run: |
+          LINK="integ-tests/swift-ios/BamlCFFI.xcframework"
+          REAL="$(readlink -f "$LINK")"
+          rm "$LINK"
+          cp -r "$REAL" "$LINK"
+
+      - name: List available xcodebuild schemes (diagnostic)
+        run: xcodebuild -list
         working-directory: integ-tests/swift-ios
 
       - name: Run iOS simulator integration tests
         run: |
-          xcodebuild build-for-testing \
+          xcodebuild test \
             -scheme BamlIOSIntegTests \
-            -destination 'platform=iOS Simulator,name=iPhone 16,OS=latest'
-          XCTESTRUN=$(find ~/Library/Developer/Xcode/DerivedData -name "*.xctestrun" -path "*/swift-ios*" | sort -t_ -k1 | tail -1)
-          /usr/libexec/PlistBuddy \
-            -c "Add :TestConfigurations:0:TestTargets:0:TestingEnvironmentVariables:OPENROUTER_API_KEY string $OPENROUTER_API_KEY" \
-            "$XCTESTRUN"
-          xcodebuild test-without-building \
-            -xctestrun "$XCTESTRUN" \
-            -destination 'platform=iOS Simulator,name=iPhone 16,OS=latest'
+            -destination 'platform=iOS Simulator,name=iPhone 16,OS=latest' \
+            -testEnvironmentVariables OPENROUTER_API_KEY="$OPENROUTER_API_KEY"
         working-directory: integ-tests/swift-ios
