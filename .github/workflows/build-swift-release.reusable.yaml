@@ -89,7 +89,7 @@ jobs:
 
       - name: Build macOS dylib
         run: |
-          cargo build --release -p baml-language-client-cffi --target aarch64-apple-darwin
+          cargo build --release -p baml_cffi --target aarch64-apple-darwin
         working-directory: engine
 
       - name: Resolve Swift package
@@ -132,7 +132,7 @@ jobs:
       - name: Run iOS simulator integration tests
         run: |
           xcodebuild build-for-testing \
-            -scheme BamlIOSIntegTests-Package \
+            -scheme BamlIOSIntegTests \
             -destination 'platform=iOS Simulator,name=iPhone 16,OS=latest'
           XCTESTRUN=$(find ~/Library/Developer/Xcode/DerivedData -name "*.xctestrun" -path "*/swift-ios*" | sort -t_ -k1 | tail -1)
           /usr/libexec/PlistBuddy \

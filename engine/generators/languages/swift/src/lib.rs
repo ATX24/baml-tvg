@@ -8,6 +8,9 @@ mod ir_to_swift;
 mod r#type;
 mod utils;
 
+#[cfg(test)]
+mod test_macros;
+
 #[derive(Default)]
 pub struct SwiftLanguageFeatures;
 

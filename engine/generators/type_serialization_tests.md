@@ -57,6 +57,11 @@ class T { f string }
 - Non-streaming: `String`
 - Streaming: `Option<String>`
 
+### Swift
+
+- Non-streaming: `String`
+- Streaming: `String?`
+
 ---
 
 ## int_field
@@ -86,6 +91,11 @@ class T { f int }
 
 - Non-streaming: `i64`
 - Streaming: `Option<i64>`
+
+### Swift
+
+- Non-streaming: `Int64`
+- Streaming: `Int64?`
 
 ---
 
@@ -117,6 +127,11 @@ class T { f float }
 - Non-streaming: `f64`
 - Streaming: `Option<f64>`
 
+### Swift
+
+- Non-streaming: `Double`
+- Streaming: `Double?`
+
 ---
 
 ## bool_field
@@ -146,6 +161,11 @@ class T { f bool }
 
 - Non-streaming: `bool`
 - Streaming: `Option<bool>`
+
+### Swift
+
+- Non-streaming: `Bool`
+- Streaming: `Bool?`
 
 ---
 
@@ -179,6 +199,11 @@ class T { f image }
 - Non-streaming: `Image`
 - Streaming: `Option<types::Image>`
 
+### Swift
+
+- Non-streaming: `BamlImage`
+- Streaming: `BamlImage?`
+
 ---
 
 ## optional_image
@@ -208,6 +233,11 @@ class T { f image? }
 
 - Non-streaming: `Option<Image>`
 - Streaming: `Option<types::Image>`
+
+### Swift
+
+- Non-streaming: `BamlImage?`
+- Streaming: `BamlImage?`
 
 ---
 
@@ -239,6 +269,11 @@ class T { f audio }
 - Non-streaming: `Audio`
 - Streaming: `Option<types::Audio>`
 
+### Swift
+
+- Non-streaming: `BamlAudio`
+- Streaming: `BamlAudio?`
+
 ---
 
 ## optional_audio
@@ -268,6 +303,11 @@ class T { f audio? }
 
 - Non-streaming: `Option<Audio>`
 - Streaming: `Option<types::Audio>`
+
+### Swift
+
+- Non-streaming: `BamlAudio?`
+- Streaming: `BamlAudio?`
 
 ---
 
@@ -301,6 +341,11 @@ class T { f string? }
 - Non-streaming: `Option<String>`
 - Streaming: `Option<String>`
 
+### Swift
+
+- Non-streaming: `String?`
+- Streaming: `String?`
+
 ---
 
 ## optional_int
@@ -330,6 +375,11 @@ class T { f int? }
 
 - Non-streaming: `Option<i64>`
 - Streaming: `Option<i64>`
+
+### Swift
+
+- Non-streaming: `Int64?`
+- Streaming: `Int64?`
 
 ---
 
@@ -363,6 +413,11 @@ class T { f "hello" }
 - Non-streaming: `String`
 - Streaming: `Option<String>`
 
+### Swift
+
+- Non-streaming: `String`
+- Streaming: `String?`
+
 ---
 
 ## literal_int
@@ -392,6 +447,11 @@ class T { f 42 }
 
 - Non-streaming: `i64`
 - Streaming: `Option<i64>`
+
+### Swift
+
+- Non-streaming: `Int64`
+- Streaming: `Int64?`
 
 ---
 
@@ -423,6 +483,11 @@ class T { f true }
 - Non-streaming: `bool`
 - Streaming: `Option<bool>`
 
+### Swift
+
+- Non-streaming: `Bool`
+- Streaming: `Bool?`
+
 ---
 
 ## literal_bool_false
@@ -452,6 +517,11 @@ class T { f false }
 
 - Non-streaming: `bool`
 - Streaming: `Option<bool>`
+
+### Swift
+
+- Non-streaming: `Bool`
+- Streaming: `Bool?`
 
 ---
 
@@ -485,6 +555,11 @@ class T { f string[] }
 - Non-streaming: `Vec<String>`
 - Streaming: `Vec<String>`
 
+### Swift
+
+- Non-streaming: `[String]`
+- Streaming: `[String]`
+
 ---
 
 ## list_of_ints
@@ -514,6 +589,11 @@ class T { f int[] }
 
 - Non-streaming: `Vec<i64>`
 - Streaming: `Vec<i64>`
+
+### Swift
+
+- Non-streaming: `[Int64]`
+- Streaming: `[Int64]`
 
 ---
 
@@ -545,6 +625,11 @@ class T { f string[][] }
 - Non-streaming: `Vec<Vec<String>>`
 - Streaming: `Vec<Vec<String>>`
 
+### Swift
+
+- Non-streaming: `[[String]]`
+- Streaming: `[[String]]`
+
 ---
 
 ## optional_list
@@ -574,6 +659,11 @@ class T { f string[]? }
 
 - Non-streaming: `Option<Vec<String>>`
 - Streaming: `Option<Vec<String>>`
+
+### Swift
+
+- Non-streaming: `[String]?`
+- Streaming: `[String]?`
 
 ---
 
@@ -605,6 +695,11 @@ class T { f map<string, int> }
 - Non-streaming: `std::collections::HashMap<String, i64>`
 - Streaming: `std::collections::HashMap<String, i64>`
 
+### Swift
+
+- Non-streaming: `[String: Int64]`
+- Streaming: `[String: Int64]`
+
 ---
 
 ## map_string_to_string
@@ -634,6 +729,11 @@ class T { f map<string, string> }
 
 - Non-streaming: `std::collections::HashMap<String, String>`
 - Streaming: `std::collections::HashMap<String, String>`
+
+### Swift
+
+- Non-streaming: `[String: String]`
+- Streaming: `[String: String]`
 
 ---
 
@@ -665,6 +765,11 @@ class T { f map<string, int>? }
 - Non-streaming: `Option<std::collections::HashMap<String, i64>>`
 - Streaming: `Option<std::collections::HashMap<String, i64>>`
 
+### Swift
+
+- Non-streaming: `[String: Int64]?`
+- Streaming: `[String: Int64]?`
+
 ---
 
 ## map_of_lists
@@ -694,6 +799,11 @@ class T { f map<string, int[]> }
 
 - Non-streaming: `std::collections::HashMap<String, Vec<i64>>`
 - Streaming: `std::collections::HashMap<String, Vec<i64>>`
+
+### Swift
+
+- Non-streaming: `[String: [Int64]]`
+- Streaming: `[String: [Int64]]`
 
 ---
 
@@ -727,6 +837,11 @@ class T { f int | string }
 - Non-streaming: `Union2IntOrString`
 - Streaming: `Option<types::Union2IntOrString>`
 
+### Swift
+
+- Non-streaming: `Union2IntOrString`
+- Streaming: `Union2IntOrString?`
+
 ---
 
 ## union_int_string_bool
@@ -757,6 +872,11 @@ class T { f int | string | bool }
 - Non-streaming: `Union3BoolOrIntOrString`
 - Streaming: `Option<types::Union3BoolOrIntOrString>`
 
+### Swift
+
+- Non-streaming: `Union3BoolOrIntOrString`
+- Streaming: `Union3BoolOrIntOrString?`
+
 ---
 
 ## optional_union
@@ -786,6 +906,11 @@ class T { f (int | string)? }
 
 - Non-streaming: `Option<Union2IntOrString>`
 - Streaming: `Option<types::Union2IntOrString>`
+
+### Swift
+
+- Non-streaming: `Union2IntOrString?`
+- Streaming: `Union2IntOrString?`
 
 ---
 
@@ -820,6 +945,11 @@ class Outer { inner Inner }
 - Non-streaming: `Inner`
 - Streaming: `Option<Inner>`
 
+### Swift
+
+- Non-streaming: `Inner`
+- Streaming: `Inner?`
+
 ---
 
 ## nested_class_c_to_b
@@ -852,6 +982,11 @@ class C { b B }
 - Non-streaming: `B`
 - Streaming: `Option<B>`
 
+### Swift
+
+- Non-streaming: `B`
+- Streaming: `B?`
+
 ---
 
 ## nested_class_b_to_a
@@ -883,6 +1018,11 @@ class C { b B }
 
 - Non-streaming: `A`
 - Streaming: `Option<A>`
+
+### Swift
+
+- Non-streaming: `A`
+- Streaming: `A?`
 
 ---
 
@@ -920,6 +1060,11 @@ class T { status Status }
 - Non-streaming: `Status`
 - Streaming: `Option<types::Status>`
 
+### Swift
+
+- Non-streaming: `Status`
+- Streaming: `Status?`
+
 ---
 
 ## optional_enum
@@ -954,6 +1099,11 @@ class T { status Status? }
 - Non-streaming: `Option<Status>`
 - Streaming: `Option<types::Status>`
 
+### Swift
+
+- Non-streaming: `Status?`
+- Streaming: `Status?`
+
 ---
 
 # Streaming Attributes
@@ -986,6 +1136,11 @@ class T { f string @stream.with_state }
 - Non-streaming: `String`
 - Streaming: `baml::StreamState<Option<String>>`
 
+### Swift
+
+- Non-streaming: `String`
+- Streaming: `StreamState<String?>`
+
 ---
 
 ## stream_with_state_int
@@ -1015,6 +1170,11 @@ class T { f int @stream.with_state }
 
 - Non-streaming: `i64`
 - Streaming: `baml::StreamState<Option<i64>>`
+
+### Swift
+
+- Non-streaming: `Int64`
+- Streaming: `StreamState<Int64?>`
 
 ---
 
@@ -1046,6 +1206,11 @@ class T { f string? @stream.with_state }
 - Non-streaming: `Option<String>`
 - Streaming: `baml::StreamState<Option<String>>`
 
+### Swift
+
+- Non-streaming: `String?`
+- Streaming: `StreamState<String?>`
+
 ---
 
 ## stream_not_null_string
@@ -1072,6 +1237,11 @@ class T { f string @stream.not_null }
 - Streaming: `string`
 
 ### Rust
+
+- Non-streaming: `String`
+- Streaming: `String`
+
+### Swift
 
 - Non-streaming: `String`
 - Streaming: `String`
@@ -1106,6 +1276,11 @@ class T { f int @stream.not_null }
 - Non-streaming: `i64`
 - Streaming: `i64`
 
+### Swift
+
+- Non-streaming: `Int64`
+- Streaming: `Int64`
+
 ---
 
 ## stream_state_inside_union
@@ -1136,6 +1311,11 @@ class T { f (int @stream.with_state | string) }
 - Non-streaming: `Union2IntOrString`
 - Streaming: `Option<Union2StreamStateIntOrString>`
 
+### Swift
+
+- Non-streaming: `Union2IntOrString`
+- Streaming: `Union2StreamStateIntOrString?`
+
 ---
 
 ## stream_not_null_with_state
@@ -1165,6 +1345,11 @@ class T { f string @stream.not_null @stream.with_state }
 
 - Non-streaming: `String`
 - Streaming: `baml::StreamState<String>`
+
+### Swift
+
+- Non-streaming: `String`
+- Streaming: `StreamState<String>`
 
 ---
 
@@ -1197,6 +1382,11 @@ class T { inner Inner @stream.done }
 - Non-streaming: `Inner`
 - Streaming: `Option<types::Inner>`
 
+### Swift
+
+- Non-streaming: `Inner`
+- Streaming: `Inner?`
+
 ---
 
 ## stream_done_with_state
@@ -1227,6 +1417,11 @@ class T { inner Inner @stream.done @stream.with_state }
 
 - Non-streaming: `Inner`
 - Streaming: `baml::StreamState<Option<types::Inner>>`
+
+### Swift
+
+- Non-streaming: `Inner`
+- Streaming: `StreamState<Inner?>`
 
 ---
 
@@ -1259,6 +1454,11 @@ class T { items (Inner @stream.done)[] }
 - Non-streaming: `Vec<Inner>`
 - Streaming: `Vec<types::Inner>`
 
+### Swift
+
+- Non-streaming: `[Inner]`
+- Streaming: `[Inner]`
+
 ---
 
 ## list_field_with_stream_done
@@ -1289,6 +1489,11 @@ class T { items Inner[] @stream.done }
 
 - Non-streaming: `Vec<Inner>`
 - Streaming: `Vec<types::Inner>`
+
+### Swift
+
+- Non-streaming: `[Inner]`
+- Streaming: `[Inner]`
 
 ---
 
@@ -1321,6 +1526,11 @@ class T { matrix Inner[][][] @stream.done }
 - Non-streaming: `Vec<Vec<Vec<Inner>>>`
 - Streaming: `Vec<Vec<Vec<types::Inner>>>`
 
+### Swift
+
+- Non-streaming: `[[[Inner]]]`
+- Streaming: `[[[Inner]]]`
+
 ---
 
 ## map_with_stream_done
@@ -1351,6 +1561,11 @@ class T { lookup map<string, Inner> @stream.done }
 
 - Non-streaming: `std::collections::HashMap<String, Inner>`
 - Streaming: `std::collections::HashMap<String, types::Inner>`
+
+### Swift
+
+- Non-streaming: `[String: Inner]`
+- Streaming: `[String: Inner]`
 
 ---
 
@@ -1385,6 +1600,11 @@ class T { f int @stream.done | string }
 - Non-streaming: `Union2IntOrString`
 - Streaming: `Option<types::Union2IntOrString>`
 
+### Swift
+
+- Non-streaming: `Union2IntOrString`
+- Streaming: `Union2IntOrString?`
+
 ---
 
 ## union_with_class_variants
@@ -1417,6 +1637,11 @@ class T { f A | B }
 - Non-streaming: `Union2AOrB`
 - Streaming: `Option<Union2AOrB>`
 
+### Swift
+
+- Non-streaming: `Union2AOrB`
+- Streaming: `Union2AOrB?`
+
 ---
 
 ## union_class_with_primitive
@@ -1448,6 +1673,11 @@ class T { f Inner | string }
 - Non-streaming: `Union2InnerOrString`
 - Streaming: `Option<Union2InnerOrString>`
 
+### Swift
+
+- Non-streaming: `Union2InnerOrString`
+- Streaming: `Union2InnerOrString?`
+
 ---
 
 ## union_with_stream_not_null
@@ -1478,6 +1708,11 @@ class T { f (int | string) @stream.not_null }
 - Non-streaming: `Union2IntOrString`
 - Streaming: `types::Union2IntOrString`
 
+### Swift
+
+- Non-streaming: `Union2IntOrString`
+- Streaming: `Union2IntOrString`
+
 ---
 
 ## union_with_stream_with_state
@@ -1507,6 +1742,11 @@ class T { f (int | string) @stream.with_state }
 
 - Non-streaming: `Union2IntOrString`
 - Streaming: `baml::StreamState<Option<types::Union2IntOrString>>`
+
+### Swift
+
+- Non-streaming: `Union2IntOrString`
+- Streaming: `StreamState<Union2IntOrString?>`
 
 ---
 
@@ -1544,6 +1784,11 @@ typing.Optional[types.Checked[int, typing_extensions.Literal['valid_age']]]
 - Non-streaming: `Checked<i64>`
 - Streaming: `Option<types::Checked<i64>>`
 
+### Swift
+
+- Non-streaming: `Checked<Int64>`
+- Streaming: `Checked<Int64>?`
+
 ---
 
 ## check_on_optional
@@ -1573,6 +1818,11 @@ class T { age int? @check(valid_age, {{ this >= 0 }}) }
 
 - Non-streaming: `Checked<Option<i64>>`
 - Streaming: `types::Checked<Option<i64>>`
+
+### Swift
+
+- Non-streaming: `Checked<Int64?>`
+- Streaming: `Checked<Int64?>`
 
 ---
 
@@ -1613,6 +1863,11 @@ types.Checked[typing.Optional[int], typing_extensions.Literal['valid']]
 - Non-streaming: `Checked<Option<i64>>`
 - Streaming: `types::Checked<Option<i64>>`
 
+### Swift
+
+- Non-streaming: `Checked<Int64?>`
+- Streaming: `Checked<Int64?>`
+
 ---
 
 ## check_with_stream_not_null
@@ -1642,6 +1897,11 @@ class T { age int @check(valid_age, {{ this >= 0 }}) @stream.not_null }
 
 - Non-streaming: `Checked<i64>`
 - Streaming: `types::Checked<i64>`
+
+### Swift
+
+- Non-streaming: `Checked<Int64>`
+- Streaming: `Checked<Int64>`
 
 ---
 
@@ -1677,6 +1937,11 @@ StreamState[typing.Optional[types.Checked[int, typing_extensions.Literal['valid_
 - Non-streaming: `Checked<i64>`
 - Streaming: `baml::StreamState<Option<types::Checked<i64>>>`
 
+### Swift
+
+- Non-streaming: `Checked<Int64>`
+- Streaming: `StreamState<Checked<Int64>?>`
+
 ---
 
 ## multiple_checks
@@ -1711,6 +1976,11 @@ typing.Optional[types.Checked[int, typing_extensions.Literal['positive', 'small'
 - Non-streaming: `Checked<i64>`
 - Streaming: `Option<types::Checked<i64>>`
 
+### Swift
+
+- Non-streaming: `Checked<Int64>`
+- Streaming: `Checked<Int64>?`
+
 ---
 
 # Assert Attributes
@@ -1743,6 +2013,11 @@ class T { age int @assert(valid_age, {{ this >= 0 }}) }
 - Non-streaming: `i64`
 - Streaming: `Option<i64>`
 
+### Swift
+
+- Non-streaming: `Int64`
+- Streaming: `Int64?`
+
 ---
 
 ## assert_on_optional
@@ -1772,6 +2047,11 @@ class T { age int? @assert(valid_age, {{ this >= 0 }}) }
 
 - Non-streaming: `Option<i64>`
 - Streaming: `Option<i64>`
+
+### Swift
+
+- Non-streaming: `Int64?`
+- Streaming: `Int64?`
 
 ---
 
@@ -1803,6 +2083,11 @@ class T { f (int? @assert(valid, {{ this >= 0 }})) | null }
 - Non-streaming: `Option<i64>`
 - Streaming: `Option<i64>`
 
+### Swift
+
+- Non-streaming: `Int64?`
+- Streaming: `Int64?`
+
 ---
 
 ## assert_with_stream_not_null
@@ -1832,6 +2117,11 @@ class T { age int @assert(valid_age, {{ this >= 0 }}) @stream.not_null }
 
 - Non-streaming: `i64`
 - Streaming: `i64`
+
+### Swift
+
+- Non-streaming: `Int64`
+- Streaming: `Int64`
 
 ---
 
@@ -1863,6 +2153,11 @@ class T { age int @assert(valid_age, {{ this >= 0 }}) @stream.with_state }
 - Non-streaming: `i64`
 - Streaming: `baml::StreamState<Option<i64>>`
 
+### Swift
+
+- Non-streaming: `Int64`
+- Streaming: `StreamState<Int64?>`
+
 ---
 
 ## multiple_asserts
@@ -1892,6 +2187,11 @@ class T { age int @assert(positive, {{ this > 0 }}) @assert(small, {{ this < 100
 
 - Non-streaming: `i64`
 - Streaming: `Option<i64>`
+
+### Swift
+
+- Non-streaming: `Int64`
+- Streaming: `Int64?`
 
 ---
 
@@ -1925,6 +2225,11 @@ class T { f (int @stream.done | string) @stream.with_state }
 - Non-streaming: `Union2IntOrString`
 - Streaming: `baml::StreamState<Option<types::Union2IntOrString>>`
 
+### Swift
+
+- Non-streaming: `Union2IntOrString`
+- Streaming: `StreamState<Union2IntOrString?>`
+
 ---
 
 ## union_variant_stream_not_null_union_stream_with_state
@@ -1955,6 +2260,11 @@ class T { f (int @stream.not_null | string) @stream.with_state }
 - Non-streaming: `Union2IntOrString`
 - Streaming: `baml::StreamState<Option<types::Union2IntOrString>>`
 
+### Swift
+
+- Non-streaming: `Union2IntOrString`
+- Streaming: `StreamState<Union2IntOrString?>`
+
 ---
 
 ## union_different_variant_attributes
@@ -1984,6 +2294,11 @@ class T { f int @stream.done | string @stream.not_null }
 
 - Non-streaming: `Union2IntOrString`
 - Streaming: `types::Union2IntOrString`
+
+### Swift
+
+- Non-streaming: `Union2IntOrString`
+- Streaming: `Union2IntOrString`
 
 ---
 
@@ -2024,6 +2339,11 @@ typing.Optional[typing.Union[types.Checked[int, typing_extensions.Literal['posit
 - Non-streaming: `Union2CheckedIntOrString`
 - Streaming: `Option<types::Union2CheckedIntOrString>`
 
+### Swift
+
+- Non-streaming: `Union2CheckedIntOrString`
+- Streaming: `Union2CheckedIntOrString?`
+
 ---
 
 ## union_with_check_on_whole_union
@@ -2057,6 +2377,11 @@ typing.Optional[types.Checked[typing.Union[int, str], typing_extensions.Literal[
 
 - Non-streaming: `Checked<Union2IntOrString>`
 - Streaming: `Option<types::Checked<types::Union2IntOrString>>`
+
+### Swift
+
+- Non-streaming: `Checked<Union2IntOrString>`
+- Streaming: `Checked<Union2IntOrString>?`
 
 ---
 
@@ -2097,6 +2422,11 @@ types.Checked[typing.Optional[typing.Union[int, str]], typing_extensions.Literal
 - Non-streaming: `Option<Checked<Union2IntOrString>>`
 - Streaming: `Option<types::Checked<types::Union2IntOrString>>`
 
+### Swift
+
+- Non-streaming: `Checked<Union2IntOrString>?`
+- Streaming: `Checked<Union2IntOrString>?`
+
 ---
 
 ## union_check_on_variant_and_whole
@@ -2136,6 +2466,11 @@ typing.Optional[types.Checked[typing.Union[types.Checked[int, typing_extensions.
 - Non-streaming: `Checked<Union2CheckedIntOrString>`
 - Streaming: `Option<types::Checked<types::Union2CheckedIntOrString>>`
 
+### Swift
+
+- Non-streaming: `Checked<Union2CheckedIntOrString>`
+- Streaming: `Checked<Union2CheckedIntOrString>?`
+
 ---
 
 ## union_check_and_stream_attrs_mixed
@@ -2174,6 +2509,11 @@ StreamState[typing.Optional[typing.Union[types.Checked[int, typing_extensions.Li
 
 - Non-streaming: `Union2CheckedIntOrString`
 - Streaming: `baml::StreamState<Option<types::Union2CheckedIntOrString>>`
+
+### Swift
+
+- Non-streaming: `Union2CheckedIntOrString`
+- Streaming: `StreamState<Union2CheckedIntOrString?>`
 
 ---
 
@@ -2218,6 +2558,11 @@ StreamState<types.Checked<types.Checked<number,"positive"> | string,"valid"> | n
 - Non-streaming: `Checked<Union2CheckedIntOrString>`
 - Streaming: `baml::StreamState<Option<types::Checked<types::Union2CheckedIntOrString>>>`
 
+### Swift
+
+- Non-streaming: `Checked<Union2CheckedIntOrString>`
+- Streaming: `StreamState<Checked<Union2CheckedIntOrString>?>`
+
 ---
 
 ## union_with_assert_on_variant
@@ -2247,6 +2592,11 @@ class T { f int @assert(positive, {{ this > 0 }}) | string }
 
 - Non-streaming: `Union2IntOrString`
 - Streaming: `Option<types::Union2IntOrString>`
+
+### Swift
+
+- Non-streaming: `Union2IntOrString`
+- Streaming: `Union2IntOrString?`
 
 ---
 
@@ -2278,6 +2628,11 @@ class T { f (int | string) @assert(valid, {{ true }}) }
 - Non-streaming: `Union2IntOrString`
 - Streaming: `Option<types::Union2IntOrString>`
 
+### Swift
+
+- Non-streaming: `Union2IntOrString`
+- Streaming: `Union2IntOrString?`
+
 ---
 
 ## union_with_assert_on_whole_union_optional
@@ -2307,6 +2662,11 @@ class T { f (int | string | null) @assert(valid, {{ true }}) }
 
 - Non-streaming: `Option<Union2IntOrString>`
 - Streaming: `Option<types::Union2IntOrString>`
+
+### Swift
+
+- Non-streaming: `Union2IntOrString?`
+- Streaming: `Union2IntOrString?`
 
 ---
 
@@ -2338,6 +2698,11 @@ class T { f (int @assert(positive, {{ this > 0 }}) | string) @assert(valid, {{ t
 - Non-streaming: `Union2IntOrString`
 - Streaming: `Option<types::Union2IntOrString>`
 
+### Swift
+
+- Non-streaming: `Union2IntOrString`
+- Streaming: `Union2IntOrString?`
+
 ---
 
 ## union_assert_and_stream_attrs_mixed
@@ -2368,6 +2733,11 @@ class T { f (int @assert(positive, {{ this > 0 }}) | string) @stream.with_state 
 - Non-streaming: `Union2IntOrString`
 - Streaming: `baml::StreamState<Option<types::Union2IntOrString>>`
 
+### Swift
+
+- Non-streaming: `Union2IntOrString`
+- Streaming: `StreamState<Union2IntOrString?>`
+
 ---
 
 ## union_all_attrs_combined_with_assert
@@ -2397,6 +2767,11 @@ class T { f (int @assert(positive, {{ this > 0 }}) @stream.done | string) @asser
 
 - Non-streaming: `Union2IntOrString`
 - Streaming: `baml::StreamState<Option<types::Union2IntOrString>>`
+
+### Swift
+
+- Non-streaming: `Union2IntOrString`
+- Streaming: `StreamState<Union2IntOrString?>`
 
 ---
 
@@ -2439,6 +2814,11 @@ typing.Optional[typing.Union[types.Checked[int, typing_extensions.Literal['valid
 - Non-streaming: `Union2CheckedIntOrCheckedString`
 - Streaming: `Option<types::Union2CheckedIntOrCheckedString>`
 
+### Swift
+
+- Non-streaming: `Union2CheckedIntOrCheckedString`
+- Streaming: `Union2CheckedIntOrCheckedString?`
+
 ---
 
 ## check_simplification_scenario_2_same_name_diff_expr
@@ -2477,6 +2857,11 @@ typing.Optional[typing.Union[types.Checked[int, typing_extensions.Literal['valid
 
 - Non-streaming: `Union2CheckedIntOrCheckedString`
 - Streaming: `Option<types::Union2CheckedIntOrCheckedString>`
+
+### Swift
+
+- Non-streaming: `Union2CheckedIntOrCheckedString`
+- Streaming: `Union2CheckedIntOrCheckedString?`
 
 ---
 
@@ -2517,6 +2902,11 @@ typing.Optional[typing.Union[types.Checked[int, typing_extensions.Literal['posit
 - Non-streaming: `Union2CheckedIntOrCheckedString`
 - Streaming: `Option<types::Union2CheckedIntOrCheckedString>`
 
+### Swift
+
+- Non-streaming: `Union2CheckedIntOrCheckedString`
+- Streaming: `Union2CheckedIntOrCheckedString?`
+
 ---
 
 ## check_simplification_scenario_3b_diff_names_same_expr
@@ -2556,6 +2946,11 @@ typing.Optional[typing.Union[types.Checked[int, typing_extensions.Literal['posit
 - Non-streaming: `Union2CheckedIntOrCheckedString`
 - Streaming: `Option<types::Union2CheckedIntOrCheckedString>`
 
+### Swift
+
+- Non-streaming: `Union2CheckedIntOrCheckedString`
+- Streaming: `Union2CheckedIntOrCheckedString?`
+
 ---
 
 ## check_simplification_scenario_4_checked_union_with_unchecked
@@ -2585,6 +2980,11 @@ class T { f (int | string) @check(valid, {{ true }}) | string }
 
 - Non-streaming: `Checked<Union2IntOrString>`
 - Streaming: `Option<types::Checked<types::Union2IntOrString>>`
+
+### Swift
+
+- Non-streaming: `Checked<Union2IntOrString>`
+- Streaming: `Checked<Union2IntOrString>?`
 
 ---
 
@@ -2620,6 +3020,11 @@ typing.Optional[types.Checked[typing.Union[str, int], typing_extensions.Literal[
 - Non-streaming: `Checked<Union2IntOrString>`
 - Streaming: `Option<types::Checked<types::Union2IntOrString>>`
 
+### Swift
+
+- Non-streaming: `Checked<Union2IntOrString>`
+- Streaming: `Checked<Union2IntOrString>?`
+
 ---
 
 ## check_simplification_scenario_7_checked_union_with_unchecked_null
@@ -2653,6 +3058,11 @@ types.Checked[typing.Optional[int], typing_extensions.Literal['valid']]
 
 - Non-streaming: `Checked<Option<i64>>`
 - Streaming: `types::Checked<Option<i64>>`
+
+### Swift
+
+- Non-streaming: `Checked<Int64?>`
+- Streaming: `Checked<Int64?>`
 
 ---
 
@@ -2688,6 +3098,11 @@ types.Checked[typing.Optional[int], typing_extensions.Literal['valid']]
 - Non-streaming: `Checked<Option<i64>>`
 - Streaming: `types::Checked<Option<i64>>`
 
+### Swift
+
+- Non-streaming: `Checked<Int64?>`
+- Streaming: `Checked<Int64?>`
+
 ---
 
 # Assert Simplification Scenarios
@@ -2720,6 +3135,11 @@ class T { f (int @assert(valid, {{ this > 0 }})) | (string @assert(valid, {{ thi
 - Non-streaming: `Union2IntOrString`
 - Streaming: `Option<types::Union2IntOrString>`
 
+### Swift
+
+- Non-streaming: `Union2IntOrString`
+- Streaming: `Union2IntOrString?`
+
 ---
 
 ## assert_simplification_scenario_2_same_name_diff_expr
@@ -2749,6 +3169,11 @@ class T { f (int @assert(valid, {{ this > 0 }})) | (string @assert(valid, {{ thi
 
 - Non-streaming: `Union2IntOrString`
 - Streaming: `Option<types::Union2IntOrString>`
+
+### Swift
+
+- Non-streaming: `Union2IntOrString`
+- Streaming: `Union2IntOrString?`
 
 ---
 
@@ -2780,6 +3205,11 @@ class T { f (int @assert(positive, {{ this > 0 }})) | (string @assert(non_empty,
 - Non-streaming: `Union2IntOrString`
 - Streaming: `Option<types::Union2IntOrString>`
 
+### Swift
+
+- Non-streaming: `Union2IntOrString`
+- Streaming: `Union2IntOrString?`
+
 ---
 
 ## assert_simplification_scenario_3b_diff_names_same_expr
@@ -2809,6 +3239,11 @@ class T { f (int @assert(positive, {{ true }})) | (string @assert(non_empty, {{ 
 
 - Non-streaming: `Union2IntOrString`
 - Streaming: `Option<types::Union2IntOrString>`
+
+### Swift
+
+- Non-streaming: `Union2IntOrString`
+- Streaming: `Union2IntOrString?`
 
 ---
 
@@ -2840,6 +3275,11 @@ class T { f (int | string) @assert(valid, {{ true }}) | string }
 - Non-streaming: `Union2IntOrString`
 - Streaming: `Option<types::Union2IntOrString>`
 
+### Swift
+
+- Non-streaming: `Union2IntOrString`
+- Streaming: `Union2IntOrString?`
+
 ---
 
 ## assert_simplification_scenario_5_asserted_union_with_unasserted_reverse
@@ -2869,6 +3309,11 @@ class T { f string | (int | string) @assert(valid, {{ true }}) }
 
 - Non-streaming: `Union2IntOrString`
 - Streaming: `Option<types::Union2IntOrString>`
+
+### Swift
+
+- Non-streaming: `Union2IntOrString`
+- Streaming: `Union2IntOrString?`
 
 ---
 
@@ -2900,6 +3345,11 @@ class T { f (int | null) @assert(valid, {{ true }}) | null }
 - Non-streaming: `Option<i64>`
 - Streaming: `Option<i64>`
 
+### Swift
+
+- Non-streaming: `Int64?`
+- Streaming: `Int64?`
+
 ---
 
 ## assert_simplification_scenario_8_asserted_union_with_unasserted_null_reverse
@@ -2929,6 +3379,11 @@ class T { f null | (int | null) @assert(valid, {{ true }}) }
 
 - Non-streaming: `Option<i64>`
 - Streaming: `Option<i64>`
+
+### Swift
+
+- Non-streaming: `Int64?`
+- Streaming: `Int64?`
 
 ---
 
@@ -2962,6 +3417,11 @@ type StringList = string[]
 - Non-streaming: `Vec<String>`
 - Streaming: `Vec<String>`
 
+### Swift
+
+- Non-streaming: `[String]`
+- Streaming: `[String]`
+
 ---
 
 ## type_alias_int_map
@@ -2992,6 +3452,11 @@ type IntMap = map<string, int>
 - Non-streaming: `std::collections::HashMap<String, i64>`
 - Streaming: `std::collections::HashMap<String, i64>`
 
+### Swift
+
+- Non-streaming: `[String: Int64]`
+- Streaming: `[String: Int64]`
+
 ---
 
 ## type_alias_maybe_int
@@ -3021,6 +3486,11 @@ type MaybeInt = int?
 
 - Non-streaming: `Option<i64>`
 - Streaming: `Option<i64>`
+
+### Swift
+
+- Non-streaming: `Int64?`
+- Streaming: `Int64?`
 
 ---
 
@@ -3054,6 +3524,11 @@ class T { f map<string, int>[] }
 - Non-streaming: `Vec<std::collections::HashMap<String, i64>>`
 - Streaming: `Vec<std::collections::HashMap<String, i64>>`
 
+### Swift
+
+- Non-streaming: `[[String: Int64]]`
+- Streaming: `[[String: Int64]]`
+
 ---
 
 ## map_of_string_lists
@@ -3084,6 +3559,11 @@ class T { f map<string, string[]> }
 - Non-streaming: `std::collections::HashMap<String, Vec<String>>`
 - Streaming: `std::collections::HashMap<String, Vec<String>>`
 
+### Swift
+
+- Non-streaming: `[String: [String]]`
+- Streaming: `[String: [String]]`
+
 ---
 
 ## list_of_optionals
@@ -3113,6 +3593,11 @@ class T { f (string?)[] }
 
 - Non-streaming: `Vec<Option<String>>`
 - Streaming: `Vec<Option<String>>`
+
+### Swift
+
+- Non-streaming: `[String?]`
+- Streaming: `[String?]`
 
 ---
 
@@ -3148,6 +3633,11 @@ StreamState[typing.Optional[types.Checked[int, typing_extensions.Literal['positi
 - Non-streaming: `Checked<i64>`
 - Streaming: `baml::StreamState<Option<types::Checked<i64>>>`
 
+### Swift
+
+- Non-streaming: `Checked<Int64>`
+- Streaming: `StreamState<Checked<Int64>?>`
+
 ---
 
 ## checked_stream_state
@@ -3181,6 +3671,11 @@ StreamState[typing.Optional[types.Checked[int, typing_extensions.Literal['positi
 
 - Non-streaming: `Checked<i64>`
 - Streaming: `baml::StreamState<Option<types::Checked<i64>>>`
+
+### Swift
+
+- Non-streaming: `Checked<Int64>`
+- Streaming: `StreamState<Checked<Int64>?>`
 
 ---
 
@@ -3216,6 +3711,11 @@ StreamState[typing.Optional[types.Checked[int, typing_extensions.Literal['positi
 - Non-streaming: `Checked<i64>`
 - Streaming: `baml::StreamState<Option<types::Checked<i64>>>`
 
+### Swift
+
+- Non-streaming: `Checked<Int64>`
+- Streaming: `StreamState<Checked<Int64>?>`
+
 ---
 
 ## checked_stream_state_paren
@@ -3249,6 +3749,11 @@ StreamState[typing.Optional[types.Checked[int, typing_extensions.Literal['positi
 
 - Non-streaming: `Checked<i64>`
 - Streaming: `baml::StreamState<Option<types::Checked<i64>>>`
+
+### Swift
+
+- Non-streaming: `Checked<Int64>`
+- Streaming: `StreamState<Checked<Int64>?>`
 
 ---
 
@@ -3295,6 +3800,11 @@ class Task {
 - Non-streaming: `i64`
 - Streaming: `Option<i64>`
 
+### Swift
+
+- Non-streaming: `Int64`
+- Streaming: `Int64?`
+
 ---
 
 ## realistic_task_title
@@ -3337,6 +3847,11 @@ class Task {
 
 - Non-streaming: `String`
 - Streaming: `baml::StreamState<Option<String>>`
+
+### Swift
+
+- Non-streaming: `String`
+- Streaming: `StreamState<String?>`
 
 ---
 
@@ -3381,6 +3896,11 @@ class Task {
 - Non-streaming: `Option<String>`
 - Streaming: `Option<String>`
 
+### Swift
+
+- Non-streaming: `String?`
+- Streaming: `String?`
+
 ---
 
 ## realistic_task_priority
@@ -3423,6 +3943,11 @@ class Task {
 
 - Non-streaming: `Priority`
 - Streaming: `Option<types::Priority>`
+
+### Swift
+
+- Non-streaming: `Priority`
+- Streaming: `Priority?`
 
 ---
 
@@ -3467,6 +3992,11 @@ class Task {
 - Non-streaming: `Vec<String>`
 - Streaming: `Vec<String>`
 
+### Swift
+
+- Non-streaming: `[String]`
+- Streaming: `[String]`
+
 ---
 
 ## realistic_task_metadata
@@ -3510,6 +4040,11 @@ class Task {
 - Non-streaming: `Option<std::collections::HashMap<String, String>>`
 - Streaming: `Option<std::collections::HashMap<String, String>>`
 
+### Swift
+
+- Non-streaming: `[String: String]?`
+- Streaming: `[String: String]?`
+
 ---
 
 ## realistic_task_completed
@@ -3552,6 +4087,11 @@ class Task {
 
 - Non-streaming: `bool`
 - Streaming: `bool`
+
+### Swift
+
+- Non-streaming: `Bool`
+- Streaming: `Bool`
 
 ---
 
@@ -3622,6 +4162,11 @@ class T { f Inner }
 - Non-streaming: `Inner`
 - Streaming: `Option<types::Inner>`
 
+### Swift
+
+- Non-streaming: `Inner`
+- Streaming: `Inner?`
+
 ---
 
 ## block_stream_done_in_list
@@ -3655,6 +4200,11 @@ class T { list Inner[] }
 
 - Non-streaming: `Vec<Inner>`
 - Streaming: `Vec<types::Inner>`
+
+### Swift
+
+- Non-streaming: `[Inner]`
+- Streaming: `[Inner]`
 
 ---
 
@@ -3695,6 +4245,11 @@ class T {
 - Non-streaming: `Middle`
 - Streaming: `Option<Middle>`
 
+### Swift
+
+- Non-streaming: `Middle`
+- Streaming: `Middle?`
+
 ---
 
 ## nested_block_stream_done_inner
@@ -3734,6 +4289,11 @@ class T {
 - Non-streaming: `Inner`
 - Streaming: `Option<types::Inner>`
 
+### Swift
+
+- Non-streaming: `Inner`
+- Streaming: `Inner?`
+
 ---
 
 ## block_stream_done_field_access
@@ -3769,5 +4329,10 @@ class T {
 
 - Non-streaming: `i64`
 - Streaming: `i64`
+
+### Swift
+
+- Non-streaming: `Int64`
+- Streaming: `Int64`
 
 ---

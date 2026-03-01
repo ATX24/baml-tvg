@@ -30,6 +30,8 @@ pub struct TestCase {
     pub go: Option<(String, String)>,
     /// Expected Rust types: (non_streaming, streaming)
     pub rust: Option<(String, String)>,
+    /// Expected Swift types: (non_streaming, streaming)
+    pub swift: Option<(String, String)>,
     /// For enum tests: the expected values
     pub enum_values: Option<Vec<String>>,
     /// Line number in the markdown file where this test is defined (1-indexed)
@@ -129,6 +131,7 @@ pub fn parse_test_spec(content: &str) -> Vec<TestCase> {
                             Some("typescript") => test.typescript = Some((ns, s)),
                             Some("go") => test.go = Some((ns, s)),
                             Some("rust") => test.rust = Some((ns, s)),
+                            Some("swift") => test.swift = Some((ns, s)),
                             _ => {}
                         }
                     }
@@ -165,6 +168,7 @@ pub fn parse_test_spec(content: &str) -> Vec<TestCase> {
                             Some("typescript") => test.typescript = Some((ns, s)),
                             Some("go") => test.go = Some((ns, s)),
                             Some("rust") => test.rust = Some((ns, s)),
+                            Some("swift") => test.swift = Some((ns, s)),
                             _ => {}
                         }
                     }
@@ -213,6 +217,11 @@ pub fn parse_test_spec(content: &str) -> Vec<TestCase> {
                 parse_mode = ParseMode::None;
                 pending_non_streaming = None;
                 pending_streaming = None;
+            } else if section == "Swift" {
+                current_language = Some("swift");
+                parse_mode = ParseMode::None;
+                pending_non_streaming = None;
+                pending_streaming = None;
             } else {
                 current_language = None;
                 parse_mode = ParseMode::None;
@@ -241,6 +250,7 @@ pub fn parse_test_spec(content: &str) -> Vec<TestCase> {
                             Some("typescript") => test.typescript = Some((ns.clone(), s.clone())),
                             Some("go") => test.go = Some((ns.clone(), s.clone())),
                             Some("rust") => test.rust = Some((ns.clone(), s.clone())),
+                            Some("swift") => test.swift = Some((ns.clone(), s.clone())),
                             _ => {}
                         }
                     }
@@ -259,6 +269,7 @@ pub fn parse_test_spec(content: &str) -> Vec<TestCase> {
                 Some("typescript") => test.typescript = Some((ns, s)),
                 Some("go") => test.go = Some((ns, s)),
                 Some("rust") => test.rust = Some((ns, s)),
+                Some("swift") => test.swift = Some((ns, s)),
                 _ => {}
             }
         }
@@ -284,6 +295,7 @@ struct TestCaseBuilder {
     typescript: Option<(String, String)>,
     go: Option<(String, String)>,
     rust: Option<(String, String)>,
+    swift: Option<(String, String)>,
     enum_values: Option<Vec<String>>,
     line_number: usize,
 }
@@ -298,6 +310,7 @@ impl TestCaseBuilder {
             typescript: None,
             go: None,
             rust: None,
+            swift: None,
             enum_values: None,
             line_number,
         }
@@ -313,6 +326,7 @@ impl TestCaseBuilder {
             typescript: self.typescript,
             go: self.go,
             rust: self.rust,
+            swift: self.swift,
             enum_values: self.enum_values,
             line_number: self.line_number,
         })
@@ -383,6 +397,7 @@ pub fn generate_test_code(language: &str) -> String {
         "typescript" => ("type_gen", "typescript", "serialize_type"),
         "go" => ("type_gen", "go", "serialize_type"),
         "rust" => ("type_gen", "rust", "serialize_type"),
+        "swift" => ("type_gen", "swift", "serialize_type"),
         _ => panic!("Unknown language: {}", language),
     };
 
@@ -395,6 +410,7 @@ pub fn generate_test_code(language: &str) -> String {
             "typescript" => test.typescript.is_some(),
             "go" => test.go.is_some(),
             "rust" => test.rust.is_some(),
+            "swift" => test.swift.is_some(),
             _ => false,
         };
         let has_enum_test = test.enum_values.is_some();
@@ -436,6 +452,7 @@ pub fn generate_test_code(language: &str) -> String {
                 "typescript" => test.typescript.as_ref().unwrap(),
                 "go" => test.go.as_ref().unwrap(),
                 "rust" => test.rust.as_ref().unwrap(),
+                "swift" => test.swift.as_ref().unwrap(),
                 _ => unreachable!(),
             };
 
@@ -465,6 +482,7 @@ fn language_short(language: &str) -> &str {
         "typescript" => "ts",
         "go" => "go",
         "rust" => "rs",
+        "swift" => "swift",
         _ => language,
     }
 }
