@@ -23,7 +23,25 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Compute XCFramework cache key
+        id: cache-key
+        run: |
+          HASH=$(find engine/language_client_cffi engine/baml-runtime engine/language_client_swift/include \
+            -type f | sort | xargs shasum -a 256 | shasum -a 256 | awk '{print $1}')
+          echo "hash=$HASH" >> $GITHUB_OUTPUT
+
+      - name: Restore XCFramework cache
+        id: xcframework-cache
+        uses: actions/cache@v4
+        with:
+          path: |
+            engine/language_client_swift/BamlCFFI.xcframework.zip
+            engine/language_client_swift/BamlCFFI.xcframework.zip.sha256
+            engine/language_client_swift/BamlCFFI.xcframework.zip.spm_checksum
+          key: xcframework-${{ runner.os }}-${{ steps.cache-key.outputs.hash }}
+
       - name: Install Rust targets
+        if: steps.xcframework-cache.outputs.cache-hit != 'true'
         run: |
           rustup target add aarch64-apple-ios
           rustup target add x86_64-apple-ios
@@ -32,15 +50,18 @@ jobs:
           rustup target add x86_64-apple-darwin
 
       - name: Cache Rust build
+        if: steps.xcframework-cache.outputs.cache-hit != 'true'
         uses: Swatinem/rust-cache@v2
         with:
           workspaces: engine
 
       - name: Build XCFramework
+        if: steps.xcframework-cache.outputs.cache-hit != 'true'
         run: bash scripts/build-xcframework.sh
         working-directory: engine/language_client_swift
 
       - name: Compute SHA256 and SPM checksum
+        if: steps.xcframework-cache.outputs.cache-hit != 'true'
         id: checksum
         run: |
           SHA=$(shasum -a 256 BamlCFFI.xcframework.zip | awk '{print $1}')
