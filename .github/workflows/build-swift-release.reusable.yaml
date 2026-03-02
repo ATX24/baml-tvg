@@ -122,8 +122,6 @@ jobs:
     name: Integration Tests (iOS Simulator / static)
     needs: build-xcframework
     runs-on: macos-14
-    env:
-      OPENROUTER_API_KEY: ${{ secrets.OPENROUTER_API_KEY }}
 
     steps:
       - uses: actions/checkout@v4
@@ -155,6 +153,5 @@ jobs:
         run: |
           xcodebuild test \
             -scheme BamlIOSIntegTests \
-            -destination 'platform=iOS Simulator,name=iPhone 16,OS=latest' \
-            -testEnvironmentVariables OPENROUTER_API_KEY="$OPENROUTER_API_KEY"
+            -destination 'platform=iOS Simulator,name=iPhone 16,OS=latest'
         working-directory: integ-tests/swift-ios
