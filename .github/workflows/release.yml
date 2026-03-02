@@ -131,8 +131,9 @@ jobs:
 
           cd /tmp/swift-dist
 
-          # Delete remote tag if it already exists (e.g. from a previous failed run)
+          # Delete remote and local tags if they already exist (idempotent retries)
           git push "$REMOTE" ":refs/tags/${VERSION}" 2>/dev/null || true
+          git tag -d "$VERSION" 2>/dev/null || true
 
           git push "$REMOTE" HEAD:main --force
           git tag "$VERSION"
