@@ -130,6 +130,6 @@ jobs:
           git config --local --unset-all "http.https://github.com/.extraheader" || true
 
           cd /tmp/swift-dist
-          git push "$REMOTE" HEAD:main --force-with-lease
+          git push "$REMOTE" HEAD:main --force
           git tag "$VERSION"
           git push "$REMOTE" "$VERSION"
