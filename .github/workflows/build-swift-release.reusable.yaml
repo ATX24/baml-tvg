@@ -137,21 +137,16 @@ jobs:
         working-directory: engine/language_client_swift
 
       - name: Resolve XCFramework symlink
-        # xcodebuild cannot follow symlinks for local binaryTargets — replace
-        # the symlink with the real directory so scheme generation succeeds.
+        # Replace the symlink with the real directory so xcodebuild can resolve
+        # the binaryTarget. We know exactly where the unzipped framework lives.
         run: |
-          LINK="integ-tests/swift-ios/BamlCFFI.xcframework"
-          REAL="$(readlink -f "$LINK")"
-          rm "$LINK"
-          cp -r "$REAL" "$LINK"
-
-      - name: List available xcodebuild schemes (diagnostic)
-        run: xcodebuild -list
-        working-directory: integ-tests/swift-ios
+          rm integ-tests/swift-ios/BamlCFFI.xcframework
+          cp -r engine/language_client_swift/BamlCFFI.xcframework \
+                integ-tests/swift-ios/BamlCFFI.xcframework
 
       - name: Run iOS simulator integration tests
         run: |
           xcodebuild test \
-            -scheme BamlIOSIntegTests \
+            -scheme BamlIOSIntegTests-Package \
             -destination 'platform=iOS Simulator,name=iPhone 16,OS=latest'
         working-directory: integ-tests/swift-ios
