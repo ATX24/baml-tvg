@@ -123,13 +123,17 @@ jobs:
           BAML_SWIFT_PUSH_TOKEN: ${{ secrets.BAML_SWIFT_PUSH_TOKEN }}
         run: |
           VERSION="${{ needs.determine-version.outputs.version_string }}"
-          REMOTE="https://x-access-token:${BAML_SWIFT_PUSH_TOKEN}@github.com/atx24/baml-swift-prototype.git"
+          REMOTE="https://x-access-token:${BAML_SWIFT_PUSH_TOKEN}@github.com/ATX24/baml-swift-prototype.git"
 
           # actions/checkout stores GITHUB_TOKEN in the LOCAL repo config (.git/config).
           # Unset it so our PAT (embedded in the remote URL) is used instead.
           git config --local --unset-all "http.https://github.com/.extraheader" || true
 
           cd /tmp/swift-dist
+
+          # Delete remote tag if it already exists (e.g. from a previous failed run)
+          git push "$REMOTE" ":refs/tags/${VERSION}" 2>/dev/null || true
+
           git push "$REMOTE" HEAD:main --force
           git tag "$VERSION"
           git push "$REMOTE" "$VERSION"

@@ -31,7 +31,7 @@ let package = Package(
         // SPM downloads and caches this automatically.
         .binaryTarget(
             name: "BamlCFFI",
-            url: "https://github.com/atx24/baml-tvg/releases/download/BAML_VERSION/BamlCFFI.xcframework.zip",
+            url: "https://github.com/ATX24/baml-tvg/releases/download/BAML_VERSION/BamlCFFI.xcframework.zip",
             checksum: "BAML_SPM_CHECKSUM"
         ),
 
