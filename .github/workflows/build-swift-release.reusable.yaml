@@ -95,12 +95,28 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Compute dylib cache key
+        id: dylib-cache-key
+        run: |
+          HASH=$(find engine/language_client_cffi engine/baml-runtime engine/Cargo.lock \
+            -type f | sort | xargs shasum -a 256 | shasum -a 256 | awk '{print $1}')
+          echo "hash=$HASH" >> $GITHUB_OUTPUT
+
+      - name: Restore dylib cache
+        id: dylib-cache
+        uses: actions/cache@v4
+        with:
+          path: engine/target/aarch64-apple-darwin/release/libbaml_cffi.dylib
+          key: dylib-macos-${{ steps.dylib-cache-key.outputs.hash }}
+
       - name: Cache Rust build
+        if: steps.dylib-cache.outputs.cache-hit != 'true'
         uses: Swatinem/rust-cache@v2
         with:
           workspaces: engine
 
       - name: Build macOS dylib
+        if: steps.dylib-cache.outputs.cache-hit != 'true'
         run: |
           cargo build --release -p baml_cffi --target aarch64-apple-darwin
         working-directory: engine
