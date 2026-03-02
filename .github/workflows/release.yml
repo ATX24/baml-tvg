@@ -125,6 +125,10 @@ jobs:
           VERSION="${{ needs.determine-version.outputs.version_string }}"
           REMOTE="https://x-access-token:${BAML_SWIFT_PUSH_TOKEN}@github.com/atx24/baml-swift-prototype.git"
 
+          # actions/checkout stores GITHUB_TOKEN in the git credential store.
+          # Unset it so our PAT (embedded in the remote URL) is used instead.
+          git config --global --unset-all "http.https://github.com/.extraheader" || true
+
           cd /tmp/swift-dist
           git push "$REMOTE" HEAD:main --force-with-lease
           git tag "$VERSION"
