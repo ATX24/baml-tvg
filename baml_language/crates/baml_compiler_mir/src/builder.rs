@@ -26,6 +26,8 @@
 //! let mir = builder.build();
 //! ```
 
+use std::collections::HashMap;
+
 use baml_base::{Name, Span};
 use baml_type::Ty;
 
@@ -45,6 +47,8 @@ pub(crate) struct MirBuilder {
     viz_nodes: Vec<VizNode>,
     /// Current source span for tagging statements/terminators.
     pub(crate) current_source_span: Option<Span>,
+    /// Maps unwind handler block -> error local, populated during catch lowering.
+    pub(crate) unwind_error_locals: HashMap<BlockId, Local>,
 }
 
 #[allow(dead_code)]
@@ -60,6 +64,7 @@ impl MirBuilder {
             span: None,
             viz_nodes: Vec::new(),
             current_source_span: None,
+            unwind_error_locals: HashMap::new(),
         }
     }
 
@@ -290,6 +295,11 @@ impl MirBuilder {
         self.set_terminator(Terminator::Unreachable);
     }
 
+    /// Emit a throw terminator (unwind with error value).
+    pub(crate) fn throw(&mut self, value: Operand) {
+        self.set_terminator(Terminator::Throw { value });
+    }
+
     /// Emit a dispatch future (for LLM calls).
     pub(crate) fn dispatch_future(
         &mut self,
@@ -375,7 +385,6 @@ impl MirBuilder {
     pub(crate) fn build(self) -> MirFunction {
         assert!(!self.blocks.is_empty(), "function has no blocks");
 
-        // Verify all blocks are terminated
         for (i, block) in self.blocks.iter().enumerate() {
             assert!(block.terminator.is_some(), "block bb{i} is not terminated");
         }
@@ -388,6 +397,7 @@ impl MirBuilder {
             locals: self.locals,
             span: self.span,
             viz_nodes: self.viz_nodes,
+            unwind_error_locals: self.unwind_error_locals,
         }
     }
 
@@ -401,6 +411,7 @@ impl MirBuilder {
             locals: self.locals,
             span: self.span,
             viz_nodes: self.viz_nodes,
+            unwind_error_locals: self.unwind_error_locals,
         }
     }
 

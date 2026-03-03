@@ -122,6 +122,14 @@ struct PendingJumpTable {
     table: JumpTableData,
 }
 
+/// Pending unwind handler instruction that needs handler-offset patching.
+struct PendingUnwind {
+    /// Instruction index where `PushUnwind` was emitted.
+    instruction_idx: usize,
+    /// Handler target block (resolved later to a concrete PC).
+    target: PendingJumpTarget,
+}
+
 /// Target kind for a pending jump patch.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 enum PendingJumpTarget {
@@ -166,6 +174,9 @@ struct StackifyCodegen<'ctx, 'obj> {
 
     /// Pending jumps that need patching: (`instruction_index`, `target_block`).
     pending_jumps: Vec<(usize, PendingJumpTarget)>,
+
+    /// Pending unwind handlers that need offset patching.
+    pending_unwinds: Vec<PendingUnwind>,
 
     /// Pending jump tables that need patching after all blocks are emitted.
     pending_jump_tables: Vec<PendingJumpTable>,
@@ -227,6 +238,7 @@ impl<'ctx, 'obj> StackifyCodegen<'ctx, 'obj> {
             real_local_count: 0,
             block_addresses: HashMap::new(),
             pending_jumps: Vec::new(),
+            pending_unwinds: Vec::new(),
             pending_jump_tables: Vec::new(),
             dead_unreachable_blocks: HashSet::new(),
             trap_pc: None,
@@ -258,7 +270,7 @@ impl<'ctx, 'obj> StackifyCodegen<'ctx, 'obj> {
             Place::Field { base, field } => {
                 let base_ty = self.resolve_place_type(base)?;
                 match &base_ty {
-                    Ty::Class(type_name) => {
+                    Ty::Class(type_name, _) => {
                         let &obj_idx = self
                             .class_object_indices
                             .get(type_name.display_name.as_str())?;
@@ -275,7 +287,7 @@ impl<'ctx, 'obj> StackifyCodegen<'ctx, 'obj> {
             Place::Index { base, .. } => {
                 let base_ty = self.resolve_place_type(base)?;
                 match base_ty {
-                    Ty::List(inner) => Some(*inner),
+                    Ty::List(inner, _) => Some(*inner),
                     Ty::Map { value, .. } => Some(*value),
                     _ => None,
                 }
@@ -380,6 +392,7 @@ impl<'ctx, 'obj> StackifyCodegen<'ctx, 'obj> {
 
         // 3. Patch all jump targets and jump tables
         self.patch_jumps();
+        self.patch_unwinds();
         self.patch_jump_tables();
 
         // 4. Convert MIR VizNodes to VM VizNodeMeta
@@ -409,7 +422,9 @@ impl<'ctx, 'obj> StackifyCodegen<'ctx, 'obj> {
             span: mir.span.unwrap_or_else(Span::fake),
             block_notifications: self.block_notifications,
             viz_nodes,
-            return_type: baml_type::Ty::Null,
+            return_type: baml_type::Ty::Null {
+                attr: baml_type::TyAttr::default(),
+            },
             param_names: Vec::new(),
             param_types: Vec::new(),
             body_meta: None,
@@ -646,6 +661,10 @@ impl<'ctx, 'obj> StackifyCodegen<'ctx, 'obj> {
             .pending_jumps
             .iter()
             .any(|(_, target)| matches!(target, PendingJumpTarget::Trap))
+            || self
+                .pending_unwinds
+                .iter()
+                .any(|pending| matches!(pending.target, PendingJumpTarget::Trap))
             || self.pending_jump_tables.iter().any(|pending| {
                 matches!(pending.otherwise, PendingJumpTarget::Trap)
                     || pending
@@ -1007,8 +1026,12 @@ impl<'ctx, 'obj> StackifyCodegen<'ctx, 'obj> {
                 args,
                 destination,
                 target,
-                unwind: _,
+                unwind,
             } => {
+                if let Some(unwind_target) = unwind {
+                    self.emit_push_unwind_handler(*unwind_target);
+                }
+
                 let func_name = pull_semantics::resolve_constant_function_name(
                     callee,
                     &self.analysis.classifications,
@@ -1031,6 +1054,11 @@ impl<'ctx, 'obj> StackifyCodegen<'ctx, 'obj> {
                     ));
                     self.emit(Instruction::CallIndirect);
                 }
+
+                if unwind.is_some() {
+                    self.emit(Instruction::PopUnwind);
+                }
+
                 self.emit_store_place(destination);
                 self.emit_jump_unless_fallthrough(*target);
             }
@@ -1077,12 +1105,26 @@ impl<'ctx, 'obj> StackifyCodegen<'ctx, 'obj> {
                 future,
                 destination,
                 target,
-                unwind: _,
+                unwind,
             } => {
+                if let Some(unwind_target) = unwind {
+                    self.emit_push_unwind_handler(*unwind_target);
+                }
+
                 unwrap_infallible(pull_semantics::walk_await_future(self, future));
                 self.emit(Instruction::Await);
+
+                if unwind.is_some() {
+                    self.emit(Instruction::PopUnwind);
+                }
+
                 self.emit_store_place(destination);
                 self.emit_jump_unless_fallthrough(*target);
+            }
+
+            Terminator::Throw { value } => {
+                self.emit_operand_pull(value);
+                self.emit(Instruction::Throw);
             }
         }
     }
@@ -1096,6 +1138,24 @@ impl<'ctx, 'obj> StackifyCodegen<'ctx, 'obj> {
         for (instruction_idx, target) in self.pending_jumps.clone() {
             let target_pc = self.resolve_pending_target_pc(target);
             self.patch_jump_to(instruction_idx, target_pc);
+        }
+    }
+
+    /// Patch all pending unwind handlers with actual handler addresses.
+    #[allow(clippy::cast_possible_wrap)]
+    fn patch_unwinds(&mut self) {
+        for pending in std::mem::take(&mut self.pending_unwinds) {
+            let target_pc = self.resolve_pending_target_pc(pending.target);
+            let offset = target_pc as isize - pending.instruction_idx as isize;
+            match &mut self.bytecode.instructions[pending.instruction_idx] {
+                Instruction::PushUnwind { handler, .. } => {
+                    *handler = offset;
+                }
+                _ => panic!(
+                    "expected PUSH_UNWIND at instruction index {}",
+                    pending.instruction_idx
+                ),
+            }
         }
     }
 
@@ -1384,6 +1444,170 @@ impl<'ctx, 'obj> StackifyCodegen<'ctx, 'obj> {
     // Helpers
     // ========================================================================
 
+    /// Emit a `PushUnwind` instruction for a MIR unwind edge.
+    fn emit_push_unwind_handler(&mut self, unwind_block: BlockId) {
+        let error_local = self.resolve_unwind_error_local(unwind_block);
+        let error_slot = self.local_slot_or_panic(error_local, "PUSH_UNWIND error local");
+        let target = self.resolve_pending_target(unwind_block);
+        let inst = self.emit(Instruction::PushUnwind {
+            handler: 0,
+            error_slot,
+        });
+        self.set_var_operand(inst, error_slot);
+        self.pending_unwinds.push(PendingUnwind {
+            instruction_idx: inst,
+            target,
+        });
+    }
+
+    /// Look up the error local for a catch handler block.
+    ///
+    /// Uses the explicit metadata from MIR lowering (`unwind_error_locals`).
+    /// Falls back to heuristic inference for backwards compatibility with
+    /// MIR produced without the metadata (should not happen in practice).
+    fn resolve_unwind_error_local(&self, unwind_block: BlockId) -> Local {
+        if let Some(&local) = self.mir.unwind_error_locals.get(&unwind_block) {
+            return local;
+        }
+
+        self.infer_unwind_error_local(unwind_block)
+    }
+
+    /// Heuristic fallback: infer the catch error local by scanning handler
+    /// block reads. Prefer locals with no definition (the synthetic error slot).
+    fn infer_unwind_error_local(&self, unwind_block: BlockId) -> Local {
+        let block = self.mir.block(unwind_block);
+        let mut reads = Vec::new();
+
+        for stmt in &block.statements {
+            Self::collect_locals_read_in_statement(&stmt.kind, &mut reads);
+        }
+        if let Some(term) = &block.terminator {
+            Self::collect_locals_read_in_terminator(term, &mut reads);
+        }
+
+        let mut seen = HashSet::new();
+        reads.retain(|local| seen.insert(*local));
+
+        if let Some(local) = reads.iter().copied().find(|local| {
+            let is_parameter = matches!(
+                self.analysis.classifications.get(local),
+                Some(LocalClassification::Parameter)
+            );
+            let has_no_def = self
+                .analysis
+                .def_use
+                .get(local)
+                .is_some_and(|du| du.def.is_none());
+            !is_parameter && has_no_def
+        }) {
+            return local;
+        }
+
+        reads.first().copied().unwrap_or_else(|| {
+            panic!(
+                "unable to infer unwind error local for handler block {unwind_block:?}; no locals read"
+            )
+        })
+    }
+
+    fn collect_locals_in_place(place: &Place, out: &mut Vec<Local>) {
+        match place {
+            Place::Local(local) => out.push(*local),
+            Place::Field { base, .. } => Self::collect_locals_in_place(base, out),
+            Place::Index { base, index, .. } => {
+                Self::collect_locals_in_place(base, out);
+                out.push(*index);
+            }
+        }
+    }
+
+    fn collect_locals_in_operand(operand: &Operand, out: &mut Vec<Local>) {
+        match operand {
+            Operand::Copy(place) | Operand::Move(place) => {
+                Self::collect_locals_in_place(place, out);
+            }
+            Operand::Constant(_) => {}
+        }
+    }
+
+    fn collect_locals_in_rvalue(rvalue: &Rvalue, out: &mut Vec<Local>) {
+        match rvalue {
+            Rvalue::Use(operand) => Self::collect_locals_in_operand(operand, out),
+            Rvalue::BinaryOp { left, right, .. } => {
+                Self::collect_locals_in_operand(left, out);
+                Self::collect_locals_in_operand(right, out);
+            }
+            Rvalue::UnaryOp { operand, .. } => Self::collect_locals_in_operand(operand, out),
+            Rvalue::Array(elements) => {
+                for operand in elements {
+                    Self::collect_locals_in_operand(operand, out);
+                }
+            }
+            Rvalue::Map(entries) => {
+                for (key, value) in entries {
+                    Self::collect_locals_in_operand(key, out);
+                    Self::collect_locals_in_operand(value, out);
+                }
+            }
+            Rvalue::Aggregate { fields, .. } => {
+                for field in fields {
+                    Self::collect_locals_in_operand(field, out);
+                }
+            }
+            Rvalue::Discriminant(place) | Rvalue::TypeTag(place) | Rvalue::Len(place) => {
+                Self::collect_locals_in_place(place, out);
+            }
+            Rvalue::IsType { operand, .. } => Self::collect_locals_in_operand(operand, out),
+        }
+    }
+
+    fn collect_locals_read_in_statement(kind: &StatementKind, out: &mut Vec<Local>) {
+        match kind {
+            StatementKind::Assign { destination, value } => {
+                Self::collect_locals_in_rvalue(value, out);
+                match destination {
+                    Place::Local(_) => {}
+                    Place::Field { base, .. } => Self::collect_locals_in_place(base, out),
+                    Place::Index { base, index, .. } => {
+                        Self::collect_locals_in_place(base, out);
+                        out.push(*index);
+                    }
+                }
+            }
+            StatementKind::Drop(place) => Self::collect_locals_in_place(place, out),
+            StatementKind::Unwatch(local) | StatementKind::WatchNotify(local) => out.push(*local),
+            StatementKind::WatchOptions { local, filter } => {
+                out.push(*local);
+                Self::collect_locals_in_operand(filter, out);
+            }
+            StatementKind::Assert(operand) => Self::collect_locals_in_operand(operand, out),
+            StatementKind::NotifyBlock { .. }
+            | StatementKind::VizEnter(_)
+            | StatementKind::VizExit(_)
+            | StatementKind::Nop => {}
+        }
+    }
+
+    fn collect_locals_read_in_terminator(term: &Terminator, out: &mut Vec<Local>) {
+        match term {
+            Terminator::Goto { .. } | Terminator::Unreachable | Terminator::Return => {}
+            Terminator::Branch { condition, .. } => Self::collect_locals_in_operand(condition, out),
+            Terminator::Switch { discriminant, .. } => {
+                Self::collect_locals_in_operand(discriminant, out);
+            }
+            Terminator::Call { callee, args, .. }
+            | Terminator::DispatchFuture { callee, args, .. } => {
+                Self::collect_locals_in_operand(callee, out);
+                for arg in args {
+                    Self::collect_locals_in_operand(arg, out);
+                }
+            }
+            Terminator::Await { future, .. } => Self::collect_locals_in_place(future, out),
+            Terminator::Throw { value } => Self::collect_locals_in_operand(value, out),
+        }
+    }
+
     /// Convert MIR `BinOp` to VM instruction.
     fn binop_instruction(op: BinOp) -> Instruction {
         match op {
@@ -1638,8 +1862,8 @@ impl PullSink for StackifyCodegen<'_, '_> {
     }
 
     fn is_type(&mut self, ty: &Ty) -> Result<(), Self::Error> {
-        // Emit instanceof check using CmpOp::InstanceOf for class aliases.
-        if let Ty::Class(tn) | Ty::TypeAlias(tn) = ty {
+        // Emit instanceof check for nominal class checks.
+        if let Ty::Class(tn, _) | Ty::TypeAlias(tn, _) = ty {
             let class_name_str = tn.display_name.as_str();
             if let Some(&class_obj_idx) = self.class_object_indices.get(class_name_str) {
                 let class_const =
@@ -1656,6 +1880,43 @@ impl PullSink for StackifyCodegen<'_, '_> {
                 let inst = self.emit(Instruction::LoadConst(idx));
                 self.set_operand(inst, OperandMeta::Const("false".to_string()));
             }
+            return Ok(());
+        }
+
+        // Primitive and builtin runtime kinds use type tags.
+        let type_tag = match ty {
+            Ty::Int { .. } => Some(baml_type::typetag::INT),
+            Ty::String { .. } => Some(baml_type::typetag::STRING),
+            Ty::Bool { .. } => Some(baml_type::typetag::BOOL),
+            Ty::Null { .. } => Some(baml_type::typetag::NULL),
+            Ty::Float { .. } => Some(baml_type::typetag::FLOAT),
+            Ty::Enum(..) => Some(baml_type::typetag::ENUM),
+            Ty::List(..) => Some(baml_type::typetag::LIST),
+            Ty::Map { .. } => Some(baml_type::typetag::MAP),
+            Ty::Function { .. } => Some(baml_type::typetag::FUNCTION),
+            Ty::Media(..) => Some(baml_type::typetag::MEDIA),
+            Ty::Literal(lit, _) => Some(match lit {
+                baml_base::Literal::Int(_) => baml_type::typetag::INT,
+                baml_base::Literal::Float(_) => baml_type::typetag::FLOAT,
+                baml_base::Literal::String(_) => baml_type::typetag::STRING,
+                baml_base::Literal::Bool(_) => baml_type::typetag::BOOL,
+            }),
+            Ty::Opaque(..) if ty.is_opaque("baml.llm.Resource") => {
+                Some(baml_type::typetag::RESOURCE)
+            }
+            Ty::Opaque(..) if ty.is_opaque("baml.llm.PromptAst") => {
+                Some(baml_type::typetag::PROMPT_AST)
+            }
+            Ty::Opaque(..) if ty.is_opaque("baml.reflect.Type") => Some(baml_type::typetag::TYPE),
+            _ => None,
+        };
+
+        if let Some(tag) = type_tag {
+            self.emit(Instruction::TypeTag);
+            let idx = self.add_constant(ConstValue::Int(tag));
+            let inst = self.emit(Instruction::LoadConst(idx));
+            self.set_operand(inst, OperandMeta::Const(tag.to_string()));
+            self.emit(Instruction::CmpOp(CmpOp::Eq));
         } else {
             self.emit(Instruction::Pop(1));
             let idx = self.add_constant(ConstValue::Bool(false));
@@ -1667,7 +1928,7 @@ impl PullSink for StackifyCodegen<'_, '_> {
 
     fn resolve_field_name(&self, base: &Place, field_idx: usize) -> String {
         let class_name = match self.resolve_place_type(base) {
-            Some(Ty::Class(tn)) => tn.display_name.to_string(),
+            Some(Ty::Class(tn, _)) => tn.display_name.to_string(),
             _ => return format!("{field_idx}"),
         };
         self.lookup_class_field_name(&class_name, field_idx)

@@ -20,9 +20,9 @@ use baml_base::{Name, QualifiedName, Span};
 use baml_compiler_hir::FunctionSignature;
 use baml_compiler_tir::{ResolvedValue, TypeResolutionContext};
 use baml_compiler_vir::{
-    AssignOp, BinaryOp, Expr, ExprBody, ExprId, Literal, PatId, Pattern, UnaryOp,
+    AssignOp, BinaryOp, CatchClauseKind, Expr, ExprBody, ExprId, Literal, PatId, Pattern, UnaryOp,
 };
-use baml_type::{Ty, TypeName};
+use baml_type::{Ty, TyAttr, TypeName};
 
 use crate::{
     AggregateKind, BinOp, BlockId, Constant, Local, MirFunction, Operand, Place, Rvalue,
@@ -88,6 +88,8 @@ struct LoweringContext<'a, 'ctx> {
     locals: HashMap<Name, Local>,
     /// Current loop context for break/continue.
     loop_context: Option<LoopContext>,
+    /// Current catch context for unwind routing.
+    catch_context: Option<CatchContext>,
     /// Class field mappings (class name -> field name -> field index).
     class_fields: &'ctx HashMap<String, HashMap<String, usize>>,
     /// Enum variant mappings (enum name -> variant name -> variant index).
@@ -151,6 +153,20 @@ struct LoopContext {
     watched_locals_depth: usize,
 }
 
+/// Context for the current catch handler.
+///
+/// When lowering expressions inside a `catch`, all `Call`/`Await`
+/// terminators use `unwind_target` as their unwind destination.
+/// The runtime stores the error in `error_local` before jumping
+/// to the unwind target.
+#[derive(Clone)]
+struct CatchContext {
+    /// Block to jump to when an error is caught.
+    unwind_target: BlockId,
+    /// Local that holds the error value in the unwind path.
+    error_local: Local,
+}
+
 impl<'a, 'ctx> LoweringContext<'a, 'ctx> {
     #[allow(clippy::too_many_arguments)]
     fn new(
@@ -168,6 +184,7 @@ impl<'a, 'ctx> LoweringContext<'a, 'ctx> {
             builder: MirBuilder::new(Name::new(""), arity),
             locals: HashMap::new(),
             loop_context: None,
+            catch_context: None,
             class_fields,
             enum_variants,
             class_type_tags,
@@ -193,8 +210,11 @@ impl<'a, 'ctx> LoweringContext<'a, 'ctx> {
     /// Uses the shared conversion from `baml_type` which handles FQN→TypeName conversion,
     /// alias expansion, and literal preservation.
     fn convert_tir_ty(&self, tir_ty: &baml_compiler_tir::Ty) -> Ty {
-        baml_type::convert_tir_ty(tir_ty, self.type_aliases, self.recursive_aliases)
-            .unwrap_or(Ty::Null)
+        baml_type::convert_tir_ty(tir_ty, self.type_aliases, self.recursive_aliases).unwrap_or(
+            Ty::Null {
+                attr: baml_type::TyAttr::default(),
+            },
+        )
     }
 
     // ========================================================================
@@ -983,7 +1003,9 @@ impl<'a, 'ctx> LoweringContext<'a, 'ctx> {
                 let base_local = self.builder.temp(base_ty.clone());
                 self.lower_expr(*base, Place::local(base_local), body);
 
-                let index_local = self.builder.temp(Ty::Int);
+                let index_local = self.builder.temp(Ty::Int {
+                    attr: baml_type::TyAttr::default(),
+                });
                 self.lower_expr(*index, Place::local(index_local), body);
 
                 // Determine index kind based on base type
@@ -1104,7 +1126,9 @@ impl<'a, 'ctx> LoweringContext<'a, 'ctx> {
                         let body_block = self.builder.create_block();
 
                         // Lower guard expression
-                        let guard_local = self.builder.temp(Ty::Bool);
+                        let guard_local = self.builder.temp(Ty::Bool {
+                            attr: baml_type::TyAttr::default(),
+                        });
                         self.lower_expr(guard, Place::local(guard_local), body);
 
                         // Branch: if guard is true go to body_block, else go to next_block
@@ -1156,6 +1180,38 @@ impl<'a, 'ctx> LoweringContext<'a, 'ctx> {
                     None,
                 );
                 // NotifyBlock returns unit
+                self.builder
+                    .assign(dest, Rvalue::Use(Operand::Constant(Constant::Null)));
+            }
+
+            // ========== Error Handling ==========
+            Expr::Catch { base, clauses } => {
+                self.lower_catch(*base, clauses, dest, body);
+            }
+
+            Expr::Throw { value } => {
+                // Lower the thrown value, then emit a Throw terminator.
+                let thrown_ty = body.ty(*value).clone();
+                let thrown = self.builder.temp(thrown_ty);
+                self.lower_expr(*value, Place::local(thrown), body);
+
+                if let Some(catch_ctx) = self.catch_context.clone() {
+                    // Throw inside an active catch scope: route directly to the
+                    // enclosing handler by storing into its error local.
+                    self.builder.assign(
+                        Place::local(catch_ctx.error_local),
+                        Rvalue::Use(Operand::copy_local(thrown)),
+                    );
+                    self.builder.goto(catch_ctx.unwind_target);
+                } else {
+                    // No active catch scope: propagate to caller/runtime.
+                    self.builder.throw(Operand::copy_local(thrown));
+                }
+
+                // Assign unit to dest in a dead block to satisfy builder invariants.
+                // The Throw terminator diverges, so this block is unreachable.
+                let dead_block = self.builder.create_block();
+                self.builder.set_current_block(dead_block);
                 self.builder
                     .assign(dest, Rvalue::Use(Operand::Constant(Constant::Null)));
             }
@@ -1330,19 +1386,19 @@ impl<'a, 'ctx> LoweringContext<'a, 'ctx> {
     /// which is not yet implemented.
     fn type_tag_for_ty(&self, ty: &Ty) -> Option<i64> {
         match ty {
-            Ty::Int => Some(baml_type::typetag::INT),
-            Ty::String => Some(baml_type::typetag::STRING),
-            Ty::Bool => Some(baml_type::typetag::BOOL),
-            Ty::Null => Some(baml_type::typetag::NULL),
-            Ty::Float => Some(baml_type::typetag::FLOAT),
-            Ty::Class(tn) => self.class_type_tags.get(tn.name.as_str()).copied(),
+            Ty::Int { .. } => Some(baml_type::typetag::INT),
+            Ty::String { .. } => Some(baml_type::typetag::STRING),
+            Ty::Bool { .. } => Some(baml_type::typetag::BOOL),
+            Ty::Null { .. } => Some(baml_type::typetag::NULL),
+            Ty::Float { .. } => Some(baml_type::typetag::FLOAT),
+            Ty::Class(tn, _) => self.class_type_tags.get(tn.name.as_str()).copied(),
             // TypeAliases: look up by alias name. See doc comment for limitations.
-            Ty::TypeAlias(tn) => self.class_type_tags.get(tn.name.as_str()).copied(),
+            Ty::TypeAlias(tn, _) => self.class_type_tags.get(tn.name.as_str()).copied(),
             // Literal types map to the same tag as their base type
-            Ty::Literal(baml_base::Literal::Int(_)) => Some(baml_type::typetag::INT),
-            Ty::Literal(baml_base::Literal::Float(_)) => Some(baml_type::typetag::FLOAT),
-            Ty::Literal(baml_base::Literal::String(_)) => Some(baml_type::typetag::STRING),
-            Ty::Literal(baml_base::Literal::Bool(_)) => Some(baml_type::typetag::BOOL),
+            Ty::Literal(baml_base::Literal::Int(_), _) => Some(baml_type::typetag::INT),
+            Ty::Literal(baml_base::Literal::Float(_), _) => Some(baml_type::typetag::FLOAT),
+            Ty::Literal(baml_base::Literal::String(_), _) => Some(baml_type::typetag::STRING),
+            Ty::Literal(baml_base::Literal::Bool(_), _) => Some(baml_type::typetag::BOOL),
             _ => None, // Not a type with a known tag
         }
     }
@@ -1379,7 +1435,9 @@ impl<'a, 'ctx> LoweringContext<'a, 'ctx> {
             }
             SwitchKind::EnumDiscriminant(_) => {
                 // Emit Discriminant to extract variant index
-                let discriminant_local = self.builder.temp(Ty::Int);
+                let discriminant_local = self.builder.temp(Ty::Int {
+                    attr: baml_type::TyAttr::default(),
+                });
                 self.builder.assign(
                     Place::local(discriminant_local),
                     Rvalue::Discriminant(Place::local(scrutinee_local)),
@@ -1388,7 +1446,9 @@ impl<'a, 'ctx> LoweringContext<'a, 'ctx> {
             }
             SwitchKind::TypeTag => {
                 // Emit TypeTag to extract runtime type tag
-                let type_tag_local = self.builder.temp(Ty::Int);
+                let type_tag_local = self.builder.temp(Ty::Int {
+                    attr: baml_type::TyAttr::default(),
+                });
                 self.builder.assign(
                     Place::local(type_tag_local),
                     Rvalue::TypeTag(Place::local(scrutinee_local)),
@@ -1582,7 +1642,9 @@ impl<'a, 'ctx> LoweringContext<'a, 'ctx> {
                 let pattern_ty = ty.clone();
 
                 // Emit instanceof check
-                let check_local = self.builder.temp(Ty::Bool);
+                let check_local = self.builder.temp(Ty::Bool {
+                    attr: baml_type::TyAttr::default(),
+                });
                 self.builder.assign(
                     Place::local(check_local),
                     Rvalue::IsType {
@@ -1619,7 +1681,9 @@ impl<'a, 'ctx> LoweringContext<'a, 'ctx> {
             Pattern::Literal(lit) => {
                 // Compare scrutinee with literal
                 let lit_const = Self::lower_literal(lit);
-                let cmp_local = self.builder.temp(Ty::Bool);
+                let cmp_local = self.builder.temp(Ty::Bool {
+                    attr: baml_type::TyAttr::default(),
+                });
                 self.builder.assign(
                     Place::local(cmp_local),
                     Rvalue::BinaryOp {
@@ -1640,7 +1704,9 @@ impl<'a, 'ctx> LoweringContext<'a, 'ctx> {
                     enum_qn,
                     variant: variant.clone(),
                 };
-                let cmp_local = self.builder.temp(Ty::Bool);
+                let cmp_local = self.builder.temp(Ty::Bool {
+                    attr: baml_type::TyAttr::default(),
+                });
                 self.builder.assign(
                     Place::local(cmp_local),
                     Rvalue::BinaryOp {
@@ -1710,11 +1776,13 @@ impl<'a, 'ctx> LoweringContext<'a, 'ctx> {
                 _ => panic!("instanceof RHS must be a simple type name"),
             };
 
+            // Constructed from the type name in the instanceof expression, not transformed
+            // from an existing typed value, so default attr is correct.
             self.builder.assign(
                 dest,
                 Rvalue::IsType {
                     operand: lhs_operand,
-                    ty: Ty::TypeAlias(TypeName::local(type_name)),
+                    ty: Ty::TypeAlias(TypeName::local(type_name), baml_type::TyAttr::default()),
                 },
             );
             return;
@@ -1775,7 +1843,9 @@ impl<'a, 'ctx> LoweringContext<'a, 'ctx> {
 
     /// Lower short-circuit AND: `a && b`
     fn lower_short_circuit_and(&mut self, lhs: ExprId, rhs: ExprId, dest: Place, body: &ExprBody) {
-        let lhs_local = self.builder.temp(Ty::Bool);
+        let lhs_local = self.builder.temp(Ty::Bool {
+            attr: baml_type::TyAttr::default(),
+        });
         self.lower_expr(lhs, Place::local(lhs_local), body);
 
         let bb_rhs = self.builder.create_block();
@@ -1803,7 +1873,9 @@ impl<'a, 'ctx> LoweringContext<'a, 'ctx> {
 
     /// Lower short-circuit OR: `a || b`
     fn lower_short_circuit_or(&mut self, lhs: ExprId, rhs: ExprId, dest: Place, body: &ExprBody) {
-        let lhs_local = self.builder.temp(Ty::Bool);
+        let lhs_local = self.builder.temp(Ty::Bool {
+            attr: baml_type::TyAttr::default(),
+        });
         self.lower_expr(lhs, Place::local(lhs_local), body);
 
         let bb_true = self.builder.create_block();
@@ -1847,7 +1919,9 @@ impl<'a, 'ctx> LoweringContext<'a, 'ctx> {
             None
         };
 
-        let cond_local = self.builder.temp(Ty::Bool);
+        let cond_local = self.builder.temp(Ty::Bool {
+            attr: baml_type::TyAttr::default(),
+        });
         self.lower_expr(condition, Place::local(cond_local), body);
 
         let bb_then = self.builder.create_block();
@@ -1900,7 +1974,9 @@ impl<'a, 'ctx> LoweringContext<'a, 'ctx> {
 
         // Condition block
         self.builder.set_current_block(bb_cond);
-        let cond_local = self.builder.temp(Ty::Bool);
+        let cond_local = self.builder.temp(Ty::Bool {
+            attr: baml_type::TyAttr::default(),
+        });
         self.lower_expr(condition, Place::local(cond_local), body);
         self.builder
             .branch(Operand::copy_local(cond_local), bb_body, bb_exit);
@@ -1914,7 +1990,9 @@ impl<'a, 'ctx> LoweringContext<'a, 'ctx> {
 
         // Body block
         self.builder.set_current_block(bb_body);
-        let body_result = self.builder.temp(Ty::Void);
+        let body_result = self.builder.temp(Ty::Void {
+            attr: baml_type::TyAttr::default(),
+        });
         self.lower_expr(loop_body, Place::local(body_result), body);
         if !self.builder.is_current_terminated() {
             self.builder.goto(bb_cond);
@@ -1928,6 +2006,198 @@ impl<'a, 'ctx> LoweringContext<'a, 'ctx> {
         if let Some(idx) = viz_idx {
             self.viz_exit(idx);
         }
+    }
+
+    /// Lower a catch expression.
+    ///
+    /// ```text
+    /// base_expr catch (e) {
+    ///     p1 => body1,
+    ///     p2 => body2,
+    /// } catch_all (e2) {
+    ///     p3 => body3,
+    /// }
+    /// ```
+    ///
+    /// Produces a MIR CFG where:
+    /// - The base expression's `Call`/`Await` terminators get `unwind` targets
+    /// - Each catch clause becomes a handler block with pattern dispatch
+    /// - Chained clauses are nested: clause[n+1] catches errors from clause[n]'s handlers
+    /// - `catch`: unmatched errors rethrow
+    /// - `catch_all`: adds implicit rethrow fallback
+    fn lower_catch(
+        &mut self,
+        base: ExprId,
+        clauses: &[baml_compiler_vir::CatchClause],
+        dest: Place,
+        body: &ExprBody,
+    ) {
+        if clauses.is_empty() {
+            // No clauses — just lower the base (degenerate case).
+            self.lower_expr(base, dest, body);
+            return;
+        }
+
+        // Join block where all paths (normal + handler arms) converge.
+        let join_block = self.builder.create_block();
+
+        // Process clauses from outermost to innermost.
+        // clause[0] catches errors from the base expression.
+        // clause[1] catches errors from clause[0]'s handler bodies.
+        // etc.
+        //
+        // We build the handler blocks in reverse so that inner clauses'
+        // unwind targets are available when we build outer clauses.
+
+        // First, allocate an error local and handler entry block for each clause.
+        let clause_data: Vec<(Local, BlockId)> = clauses
+            .iter()
+            .map(|_clause| {
+                let error_local = self.builder.temp(Ty::BuiltinUnknown {
+                    attr: TyAttr::default(),
+                });
+                let handler_entry = self.builder.create_block();
+                self.builder
+                    .unwind_error_locals
+                    .insert(handler_entry, error_local);
+                (error_local, handler_entry)
+            })
+            .collect();
+
+        // Build handler blocks in reverse order (innermost first) so that
+        // each handler body's throw/rethrow can reference the next clause's handler.
+        for clause_idx in (0..clauses.len()).rev() {
+            let clause = &clauses[clause_idx];
+            let (error_local, handler_entry) = clause_data[clause_idx];
+
+            // If there's a next clause, its handler is the catch context for
+            // this clause's arm bodies (so rethrows from arms go there).
+            let outer_catch_for_arms = if clause_idx + 1 < clauses.len() {
+                let (next_error_local, next_handler_entry) = clause_data[clause_idx + 1];
+                Some(CatchContext {
+                    unwind_target: next_handler_entry,
+                    error_local: next_error_local,
+                })
+            } else {
+                // Outermost clause — arm bodies rethrow to the enclosing
+                // catch context (if any) or propagate to caller.
+                self.catch_context.clone()
+            };
+
+            // Build the handler block.
+            let saved_block = self.builder.current_block();
+            self.builder.set_current_block(handler_entry);
+
+            // Bind the error to the clause's binding pattern.
+            let pat = body.pattern(clause.binding);
+            match pat {
+                Pattern::Binding(name) if name.as_str() != "_" => {
+                    let binding_local = self.builder.declare_local(
+                        Some(name.clone()),
+                        Ty::BuiltinUnknown {
+                            attr: TyAttr::default(),
+                        },
+                        None,
+                        false,
+                    );
+                    self.builder.assign(
+                        Place::local(binding_local),
+                        Rvalue::Use(Operand::copy_local(error_local)),
+                    );
+                    self.locals.insert(name.clone(), binding_local);
+                }
+                _ => {
+                    // Wildcard binding `_` or other pattern — no local needed.
+                }
+            }
+
+            // Dispatch through the catch arms (pattern-matching chain, like match).
+            let fallthrough_block = self.builder.create_block();
+            let last_arm_idx = clause.arms.len().saturating_sub(1);
+
+            for (arm_idx, arm) in clause.arms.iter().enumerate() {
+                let is_last_arm = arm_idx == last_arm_idx;
+                let arm_block = self.builder.create_block();
+                let next_block = if is_last_arm {
+                    fallthrough_block
+                } else {
+                    self.builder.create_block()
+                };
+
+                // Pattern test: branch to arm_block if pattern matches,
+                // else fall through to next_block.
+                let arm_source_span = body.source_spans.get(&arm.body).copied();
+                self.lower_pattern_test(
+                    arm.pattern,
+                    error_local,
+                    &Ty::BuiltinUnknown {
+                        attr: TyAttr::default(),
+                    },
+                    arm_block,
+                    next_block,
+                    body,
+                    arm_source_span,
+                );
+
+                // Arm body — set catch context so throws within arm bodies
+                // route to the next clause (if any).
+                self.builder.set_current_block(arm_block);
+                let old_catch = self.catch_context.take();
+                self.catch_context.clone_from(&outer_catch_for_arms);
+                self.lower_expr(arm.body, dest.clone(), body);
+                self.catch_context = old_catch;
+                if !self.builder.is_current_terminated() {
+                    self.builder.goto(join_block);
+                }
+
+                if !is_last_arm {
+                    self.builder.set_current_block(next_block);
+                }
+            }
+
+            // Fallthrough block: no arm matched.
+            // Behavior depends on clause kind:
+            //   catch: rethrow (unmatched error propagates)
+            //   catch_all: rethrow (implicit fallback)
+            self.builder.set_current_block(fallthrough_block);
+            match clause.kind {
+                CatchClauseKind::Catch | CatchClauseKind::CatchAll => {
+                    // Rethrow the error. If there's an outer catch context, route
+                    // directly to its handler local/block. Otherwise propagate.
+                    if let Some(catch_ctx) = outer_catch_for_arms.clone() {
+                        self.builder.assign(
+                            Place::local(catch_ctx.error_local),
+                            Rvalue::Use(Operand::copy_local(error_local)),
+                        );
+                        self.builder.goto(catch_ctx.unwind_target);
+                    } else {
+                        self.builder.throw(Operand::copy_local(error_local));
+                    }
+                }
+            }
+
+            // Restore the block we were in before building the handler.
+            self.builder.set_current_block(saved_block);
+        }
+
+        // Now lower the base expression with the innermost clause as catch context.
+        let (first_error_local, first_handler_entry) = clause_data[0];
+        let old_catch = self.catch_context.take();
+        self.catch_context = Some(CatchContext {
+            unwind_target: first_handler_entry,
+            error_local: first_error_local,
+        });
+
+        self.lower_expr(base, dest, body);
+
+        self.catch_context = old_catch;
+
+        // If the base didn't diverge, jump to join.
+        if !self.builder.is_current_terminated() {
+            self.builder.goto(join_block);
+        }
+
+        self.builder.set_current_block(join_block);
     }
 
     /// Lower a function call.
@@ -1944,7 +2214,7 @@ impl<'a, 'ctx> LoweringContext<'a, 'ctx> {
         // Check if this is a $watch method call (e.g., value.$watch.options(filter))
         if let Expr::FieldAccess { base, field } = callee_expr {
             let base_ty = body.ty(*base);
-            if let baml_compiler_vir::Ty::WatchAccessor(_) = base_ty {
+            if let baml_compiler_vir::Ty::WatchAccessor(..) = base_ty {
                 // This is a $watch method call
                 // The base expression is var.$watch, so we need to get the var
                 let watch_accessor_expr = body.expr(*base);
@@ -2028,12 +2298,12 @@ impl<'a, 'ctx> LoweringContext<'a, 'ctx> {
             // Get the type name for method path construction
             // Works for both builtin class types and primitive types with methods
             let type_name = match &base_ty {
-                Ty::Class(tn) if !tn.module_path.is_empty() => Some(tn.display_name.to_string()),
-                Ty::Opaque(tn) => Some(tn.display_name.to_string()),
-                Ty::List(_) => Some("baml.Array".to_string()),
-                Ty::String => Some("baml.String".to_string()),
+                Ty::Class(tn, _) if !tn.module_path.is_empty() => Some(tn.display_name.to_string()),
+                Ty::Opaque(tn, _) => Some(tn.display_name.to_string()),
+                Ty::List(..) => Some("baml.Array".to_string()),
+                Ty::String { .. } => Some("baml.String".to_string()),
                 Ty::Map { .. } => Some("baml.Map".to_string()),
-                Ty::Class(_) => Self::class_name_from_ty(base_ty),
+                Ty::Class(..) => Self::class_name_from_ty(base_ty),
                 _ => None,
             };
 
@@ -2155,7 +2425,9 @@ impl<'a, 'ctx> LoweringContext<'a, 'ctx> {
             Expr::Index { base, index } => {
                 let base_place = self.lower_lvalue(*base, body);
                 let base_ty = body.ty(*base).clone();
-                let index_local = self.builder.temp(Ty::Int);
+                let index_local = self.builder.temp(Ty::Int {
+                    attr: baml_type::TyAttr::default(),
+                });
                 self.lower_expr(*index, Place::local(index_local), body);
 
                 // Determine index kind based on base type
@@ -2221,7 +2493,7 @@ impl<'a, 'ctx> LoweringContext<'a, 'ctx> {
     /// For user classes, returns just the name (e.g., "`MyClass`").
     fn class_name_from_ty(ty: &Ty) -> Option<String> {
         match ty {
-            Ty::TypeAlias(tn) | Ty::Class(tn) => {
+            Ty::TypeAlias(tn, _) | Ty::Class(tn, _) => {
                 // Use display_name which is pre-computed with the full path for builtins
                 Some(tn.display_name.to_string())
             }
@@ -2250,9 +2522,14 @@ impl<'a, 'ctx> LoweringContext<'a, 'ctx> {
     }
 
     /// Emit a function call with automatic continue block handling.
+    ///
+    /// If a `CatchContext` is active, the call's unwind target is set so that
+    /// errors route to the catch handler block.
     fn emit_call(&mut self, callee: Operand, args: Vec<Operand>, dest: Place) {
         let continue_block = self.builder.create_block();
-        self.builder.call(callee, args, dest, continue_block, None);
+        let unwind = self.catch_context.as_ref().map(|ctx| ctx.unwind_target);
+        self.builder
+            .call(callee, args, dest, continue_block, unwind);
         self.builder.set_current_block(continue_block);
     }
 
@@ -2262,10 +2539,15 @@ impl<'a, 'ctx> LoweringContext<'a, 'ctx> {
     /// This emits:
     /// 1. `DispatchFuture`: Start the async operation, get a future handle
     /// 2. Await: Wait for the future and retrieve the result
+    ///
+    /// If a `CatchContext` is active, the Await's unwind target is set so that
+    /// errors route to the catch handler block.
     fn emit_sys_op_call(&mut self, callee: Operand, args: Vec<Operand>, dest: Place) {
         // Create a temp to hold the future handle
         // Future handles are opaque to the VM - we use Null type
-        let future_local = self.builder.temp(Ty::Null);
+        let future_local = self.builder.temp(Ty::Null {
+            attr: baml_type::TyAttr::default(),
+        });
         let future_place = Place::local(future_local);
 
         // Create blocks for the dispatch and await
@@ -2277,9 +2559,10 @@ impl<'a, 'ctx> LoweringContext<'a, 'ctx> {
             .dispatch_future(callee, args, future_place.clone(), await_block);
 
         // In await_block: wait for the future and store result in dest
+        let unwind = self.catch_context.as_ref().map(|ctx| ctx.unwind_target);
         self.builder.set_current_block(await_block);
         self.builder
-            .await_(future_place, dest, continue_block, None);
+            .await_(future_place, dest, continue_block, unwind);
 
         // Continue execution after await completes
         self.builder.set_current_block(continue_block);

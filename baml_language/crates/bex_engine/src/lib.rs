@@ -792,7 +792,11 @@ impl BexEngine {
         let _call_guard = ActiveCallGuard::new(&self.active_calls, call_id, &cancel)?;
 
         let function_index = self.lookup_function(function_name)?;
-        let return_type = self.function_return_type(function_name).unwrap_or(Ty::Null);
+        let return_type = self
+            .function_return_type(function_name)
+            .unwrap_or(Ty::Null {
+                attr: baml_type::TyAttr::default(),
+            });
 
         // Register with current epoch
         let my_epoch = self.current_epoch.load(Ordering::Acquire);
@@ -1123,11 +1127,13 @@ impl BexEngine {
                                 },
                                 call_stack: full_call_stack,
                                 timestamp: SystemTime::now(),
-                                event: EventKind::Function(FunctionEvent::End(FunctionEnd {
-                                    name: root_span.label,
-                                    result: external_result,
-                                    duration: root_span.started_at.elapsed(),
-                                })),
+                                event: EventKind::Function(FunctionEvent::End(Box::new(
+                                    FunctionEnd {
+                                        name: root_span.label,
+                                        result: external_result,
+                                        duration: root_span.started_at.elapsed(),
+                                    },
+                                ))),
                             };
                             self.emit(end_event);
                         }
@@ -1374,13 +1380,13 @@ impl BexEngine {
                                         },
                                         call_stack,
                                         timestamp: SystemTime::now(),
-                                        event: EventKind::Function(FunctionEvent::End(
+                                        event: EventKind::Function(FunctionEvent::End(Box::new(
                                             FunctionEnd {
                                                 name: function_name,
                                                 result: external_result,
                                                 duration: span.started_at.elapsed(),
                                             },
-                                        )),
+                                        ))),
                                     };
                                     self.emit(exit_event);
                                 }
@@ -1410,7 +1416,29 @@ impl BexEngine {
         let args = args.iter().map(std::convert::Into::into).collect();
         let fn_ptr = self.sys_ops.get(op);
         let ctx = self.sys_op_ctx.with_cancel(cancel.clone());
-        fn_ptr(&self.heap, args, &ctx, call_id)
+        let result = fn_ptr(&self.heap, args, &ctx, call_id);
+
+        match result {
+            SysOpResult::Ready(Ok(v)) => SysOpResult::Ready(Ok(v)),
+            SysOpResult::Ready(Err(err)) => {
+                if let Err(violation) = sys_types::validate_sys_op_error(op, &err.kind) {
+                    tracing::warn!("{violation}");
+                }
+                SysOpResult::Ready(Err(err))
+            }
+            SysOpResult::Async(fut) => {
+                let boxed = Box::pin(async move {
+                    let res = fut.await;
+                    if let Err(err) = &res {
+                        if let Err(violation) = sys_types::validate_sys_op_error(op, &err.kind) {
+                            tracing::warn!("{violation}");
+                        }
+                    }
+                    res
+                });
+                SysOpResult::Async(boxed)
+            }
+        }
     }
 }
 

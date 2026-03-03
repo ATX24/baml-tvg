@@ -103,6 +103,10 @@ pub enum TypeRef {
     /// Maps to `Ty::BuiltinUnknown` in TIR.
     BuiltinUnknown,
 
+    /// The bottom type — uninhabited (no values).
+    /// Maps to `tir::Ty::Never` during lowering.
+    Never,
+
     /// The `type` type keyword — the meta-type for type values.
     /// Used in type annotations like `let t: type = ...`.
     /// Maps to `tir::Ty::Type` during lowering.
@@ -387,7 +391,7 @@ impl TypeRef {
     }
 
     /// Create a `TypeRef` from a type name string (primitive or user-defined).
-    fn from_type_name(name: &str) -> Self {
+    pub fn from_type_name(name: &str) -> Self {
         // Use case-sensitive matching for type keywords.
         // This ensures that `Unknown` is treated as a user-defined type name,
         // not as the `unknown` builtin keyword.
@@ -398,6 +402,7 @@ impl TypeRef {
             "bool" => TypeRef::Bool,
             "null" => TypeRef::Null,
             "unknown" => TypeRef::BuiltinUnknown,
+            "never" => TypeRef::Never,
             "type" => TypeRef::Type,
             "image" => TypeRef::Media(baml_base::MediaKind::Image),
             "audio" => TypeRef::Media(baml_base::MediaKind::Audio),

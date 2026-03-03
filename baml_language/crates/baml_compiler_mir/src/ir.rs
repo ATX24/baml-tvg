@@ -29,6 +29,9 @@ pub struct MirFunction {
     pub span: Option<Span>,
     /// Visualization nodes for control flow visualization.
     pub viz_nodes: Vec<VizNode>,
+    /// Maps unwind handler block IDs to the error local that receives the error value.
+    /// Populated during catch lowering so the emitter doesn't have to infer it.
+    pub unwind_error_locals: std::collections::HashMap<BlockId, Local>,
 }
 
 impl MirFunction {
@@ -285,6 +288,15 @@ pub enum Terminator {
         /// Block to jump to if the future fails (for catch).
         unwind: Option<BlockId>,
     },
+
+    /// Throw an error value, unwinding to the nearest catch handler.
+    ///
+    /// If no catch handler is active, the error propagates to the caller.
+    /// The `value` operand holds the error object to be thrown.
+    Throw {
+        /// The error value to throw.
+        value: Operand,
+    },
 }
 
 impl Terminator {
@@ -321,6 +333,7 @@ impl Terminator {
                 }
                 succs
             }
+            Terminator::Throw { .. } => vec![],
         }
     }
 }

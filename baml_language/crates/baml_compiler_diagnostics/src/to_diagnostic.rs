@@ -165,6 +165,11 @@ impl<C: ErrorContext> TypeError<C> {
                     .with_primary_span(loc_fn(location))
             }
 
+            TypeError::UnreachableCatchArm { location } => {
+                Diagnostic::warning(DiagnosticId::UnreachableCatchArm, "Unreachable catch arm")
+                    .with_primary_span(loc_fn(location))
+            }
+
             TypeError::UnknownEnumVariant {
                 enum_name,
                 variant_name,
@@ -197,6 +202,42 @@ impl<C: ErrorContext> TypeError<C> {
                 ),
             )
             .with_primary_span(loc_fn(location)),
+
+            TypeError::NonExhaustiveCatch {
+                unhandled_types,
+                location,
+            } => {
+                let unhandled = unhandled_types.join(", ");
+                Diagnostic::error(
+                    DiagnosticId::NonExhaustiveCatch,
+                    format!("Non-exhaustive catch chain: unhandled throw types {unhandled}"),
+                )
+                .with_primary_span(loc_fn(location))
+            }
+
+            TypeError::ThrowsContractViolation {
+                extra_types,
+                location,
+            } => {
+                let extras = extra_types.join(", ");
+                Diagnostic::error(
+                    DiagnosticId::ThrowsContractViolation,
+                    format!("Function throws types not covered by `throws` declaration: {extras}"),
+                )
+                .with_primary_span(loc_fn(location))
+            }
+
+            TypeError::ThrowsContractExtraneous {
+                unused_types,
+                location,
+            } => {
+                let unused = unused_types.join(", ");
+                Diagnostic::warning(
+                    DiagnosticId::ThrowsContractExtraneous,
+                    format!("`throws` declaration includes types the function never throws: {unused}"),
+                )
+                .with_primary_span(loc_fn(location))
+            }
 
             TypeError::InvalidMapKeyType { ty, location } => Diagnostic::error(
                 DiagnosticId::InvalidMapKeyType,
@@ -461,6 +502,15 @@ impl<C: ErrorContext> TypeError<C> {
                 Diagnostic::warning(DiagnosticId::JinjaInvalidTest, msg)
                     .with_primary_span(loc_fn(location))
             }
+
+            TypeError::InvalidCatchBindingType {
+                type_name,
+                location,
+            } => Diagnostic::error(
+                DiagnosticId::InvalidCatchBindingType,
+                format!("Type `{type_name}` is not allowed in catch bindings"),
+            )
+            .with_primary_span(loc_fn(location)),
         };
         diag.with_phase(DiagnosticPhase::Type)
     }

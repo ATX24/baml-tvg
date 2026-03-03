@@ -17,7 +17,7 @@
 
 use std::sync::Arc;
 
-use baml_base::{FileId, Name, SourceFile, Span};
+use baml_base::{FileId, Name, SourceFile, Span, TyAttr};
 use baml_compiler_diagnostics::{HirDiagnostic, NameError};
 use baml_compiler_parser::syntax_tree;
 use baml_compiler_syntax::SyntaxNode;
@@ -436,6 +436,7 @@ fn function_signature_with_source_map<'db>(
                     Name::new("llm"),
                     Name::new("PrimitiveClient"),
                 ])),
+                throws: None,
             }),
             SignatureSourceMap::default(),
         );
@@ -483,6 +484,7 @@ fn function_signature_with_source_map<'db>(
                     name: base_name.clone(),
                     params: vec![],
                     return_type: TypeRef::Unknown,
+                    throws: None,
                 }),
                 SignatureSourceMap::default(),
             ));
@@ -498,6 +500,7 @@ fn function_signature_with_source_map<'db>(
                 name: func_name,
                 params: base_sig.params.clone(),
                 return_type,
+                throws: base_sig.throws.clone(),
             }),
             source_map,
         );
@@ -511,6 +514,7 @@ fn function_signature_with_source_map<'db>(
             name: func.name.clone(),
             params: vec![],
             return_type: TypeRef::Unknown,
+            throws: None,
         }),
         SignatureSourceMap::default(),
     );
@@ -600,11 +604,21 @@ fn lower_method_signature(
         source_map.set_return_type_span(span);
     }
 
+    let throws_clause = method_node.throws_clause();
+    let throws = throws_clause
+        .as_ref()
+        .and_then(baml_compiler_syntax::ThrowsClause::type_expr)
+        .map(|te| {
+            source_map.set_throws_type_span(te.syntax().text_range());
+            TypeRef::from_ast(&te)
+        });
+
     (
         Arc::new(FunctionSignature {
             name: method_name.clone(),
             params,
             return_type,
+            throws,
         }),
         source_map,
     )
@@ -1167,6 +1181,179 @@ pub fn list_function_names(db: &dyn Db, root: baml_workspace::Project) -> Vec<(S
     functions
 }
 
+/// The kind of a symbol in a BAML project.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum SymbolKind {
+    Function,
+    Class,
+    Enum,
+    TypeAlias,
+    Client,
+    Test,
+    Generator,
+    TemplateString,
+    RetryPolicy,
+    /// A field within a class.
+    Field,
+    /// A variant within an enum.
+    EnumVariant,
+}
+
+/// A symbol with proper CST ranges, suitable for document-symbol / outline views.
+#[derive(Debug, Clone)]
+pub struct FileSymbol {
+    pub name: String,
+    pub kind: SymbolKind,
+    pub range: TextRange,
+    pub selection_range: TextRange,
+    pub children: Vec<FileSymbol>,
+}
+
+/// Returns all top-level symbols in a single file with accurate CST ranges.
+///
+/// Used by `textDocument/documentSymbol` to power the Outline view and `@`
+/// symbol search.  Each symbol carries its full range and name-selection range
+/// derived directly from the concrete syntax tree, so cursor-position matching
+/// works correctly.
+pub fn list_file_symbols(db: &dyn Db, file: SourceFile) -> Vec<FileSymbol> {
+    use baml_compiler_syntax::ast;
+    use rowan::ast::AstNode as _;
+
+    let tree = syntax_tree(db, file);
+    let Some(source_file) = ast::SourceFile::cast(tree) else {
+        return Vec::new();
+    };
+
+    let mut symbols = Vec::new();
+
+    for item in source_file.items() {
+        match item {
+            ast::Item::Function(func) => {
+                if let Some(name_token) = func.name() {
+                    // Skip compiler-generated functions (render_prompt, build_request)
+                    if name_token.text().contains('.') {
+                        continue;
+                    }
+                    symbols.push(FileSymbol {
+                        name: name_token.text().to_string(),
+                        kind: SymbolKind::Function,
+                        range: func.syntax().text_range(),
+                        selection_range: name_token.text_range(),
+                        children: Vec::new(),
+                    });
+                }
+            }
+            ast::Item::Class(class) => {
+                if let Some(name_token) = class.name() {
+                    let children: Vec<FileSymbol> = class
+                        .fields()
+                        .filter_map(|field| {
+                            let field_name = field.name()?;
+                            Some(FileSymbol {
+                                name: field_name.text().to_string(),
+                                kind: SymbolKind::Field,
+                                range: field.syntax().text_range(),
+                                selection_range: field_name.text_range(),
+                                children: Vec::new(),
+                            })
+                        })
+                        .collect();
+
+                    symbols.push(FileSymbol {
+                        name: name_token.text().to_string(),
+                        kind: SymbolKind::Class,
+                        range: class.syntax().text_range(),
+                        selection_range: name_token.text_range(),
+                        children,
+                    });
+                }
+            }
+            ast::Item::Enum(enum_def) => {
+                if let Some(name_token) = enum_def.name() {
+                    let children: Vec<FileSymbol> = enum_def
+                        .variants()
+                        .filter_map(|variant| {
+                            let variant_name = variant.name()?;
+                            Some(FileSymbol {
+                                name: variant_name.text().to_string(),
+                                kind: SymbolKind::EnumVariant,
+                                range: variant.syntax().text_range(),
+                                selection_range: variant_name.text_range(),
+                                children: Vec::new(),
+                            })
+                        })
+                        .collect();
+
+                    symbols.push(FileSymbol {
+                        name: name_token.text().to_string(),
+                        kind: SymbolKind::Enum,
+                        range: enum_def.syntax().text_range(),
+                        selection_range: name_token.text_range(),
+                        children,
+                    });
+                }
+            }
+            ast::Item::TypeAlias(alias) => {
+                if let Some(name_token) = alias.name() {
+                    symbols.push(FileSymbol {
+                        name: name_token.text().to_string(),
+                        kind: SymbolKind::TypeAlias,
+                        range: alias.syntax().text_range(),
+                        selection_range: name_token.text_range(),
+                        children: Vec::new(),
+                    });
+                }
+            }
+            ast::Item::Client(client) => {
+                if let Some(name_token) = client.name() {
+                    symbols.push(FileSymbol {
+                        name: name_token.text().to_string(),
+                        kind: SymbolKind::Client,
+                        range: client.syntax().text_range(),
+                        selection_range: name_token.text_range(),
+                        children: Vec::new(),
+                    });
+                }
+            }
+            ast::Item::Test(test) => {
+                if let Some(name_token) = test.name() {
+                    symbols.push(FileSymbol {
+                        name: name_token.text().to_string(),
+                        kind: SymbolKind::Test,
+                        range: test.syntax().text_range(),
+                        selection_range: name_token.text_range(),
+                        children: Vec::new(),
+                    });
+                }
+            }
+            ast::Item::RetryPolicy(rp) => {
+                if let Some(name_token) = rp.name() {
+                    symbols.push(FileSymbol {
+                        name: name_token.text().to_string(),
+                        kind: SymbolKind::RetryPolicy,
+                        range: rp.syntax().text_range(),
+                        selection_range: name_token.text_range(),
+                        children: Vec::new(),
+                    });
+                }
+            }
+            ast::Item::TemplateString(ts) => {
+                if let Some(name_token) = ts.name() {
+                    symbols.push(FileSymbol {
+                        name: name_token.text().to_string(),
+                        kind: SymbolKind::TemplateString,
+                        range: ts.syntax().text_range(),
+                        selection_range: name_token.text_range(),
+                        children: Vec::new(),
+                    });
+                }
+            }
+        }
+    }
+
+    symbols
+}
+
 /// Returns the body of a function (LLM prompt or expression IR).
 ///
 /// This is the most frequently invalidated query - it changes whenever
@@ -1177,6 +1364,30 @@ pub fn list_function_names(db: &dyn Db, root: baml_workspace::Project) -> Vec<(S
 #[salsa::tracked]
 pub fn function_body<'db>(db: &'db dyn Db, function: FunctionLoc<'db>) -> Arc<FunctionBody> {
     Arc::new(build_function_body(db, function))
+}
+
+/// Collect all known type names (primitives + user-defined classes, enums, type aliases)
+/// from the project for BEP-010 bare-type pattern sugar.
+fn collect_known_type_names(db: &dyn Db) -> std::collections::HashSet<String> {
+    let mut names: std::collections::HashSet<String> = body::PRIMITIVE_TYPE_NAMES
+        .iter()
+        .map(ToString::to_string)
+        .collect();
+
+    let project = db.project();
+    for file in project.files(db) {
+        let item_tree = file_item_tree(db, *file);
+        for class in item_tree.classes.values() {
+            names.insert(class.name.to_string());
+        }
+        for enum_def in item_tree.enums.values() {
+            names.insert(enum_def.name.to_string());
+        }
+        for alias in item_tree.type_aliases.values() {
+            names.insert(alias.name.to_string());
+        }
+    }
+    names
 }
 
 /// Build a function body (pure syntactic lowering, no name resolution).
@@ -1329,7 +1540,10 @@ fn build_function_body<'db>(db: &'db dyn Db, function: FunctionLoc<'db>) -> Func
 
     // Lower the function with file_id for span tracking.
     let file_id = file.file_id(db);
-    function_def.map_or(FunctionBody::Missing, |f| FunctionBody::lower(&f, file_id))
+    let known_type_names = collect_known_type_names(db);
+    function_def.map_or(FunctionBody::Missing, |f| {
+        FunctionBody::lower(&f, file_id, known_type_names)
+    })
 }
 
 /// Returns `true` if this function is one of the expanded LLM pieces (`LlmCall`, `LlmRenderPrompt`, `LlmBuildRequest`).
@@ -1974,6 +2188,7 @@ pub(crate) fn lower_class(node: &SyntaxNode, ctx: &mut LoweringContext) -> Optio
         is_dynamic: class_is_dynamic,
         alias: class_alias,
         description: class_description,
+        ty_attr: TyAttr::default(),
     })
 }
 
@@ -2208,6 +2423,7 @@ pub(crate) fn lower_enum(node: &SyntaxNode, ctx: &mut LoweringContext) -> Option
         name,
         variants,
         alias: enum_alias,
+        ty_attr: TyAttr::default(),
     })
 }
 

@@ -1,0 +1,86 @@
+---
+source: crates/baml_tests/src/generated_tests.rs
+---
+=== HIR ITEMS ===
+function CatchWithTypedArm(x: int) -> string {
+    MayFail(x) catch (e) {
+        _: string => "caught string",
+    }
+}
+
+function CatchAndRethrow(x: int) -> string {
+    MayFail(x) catch (e) {
+        _ => throw e,
+    }
+}
+
+function ChainedCatchClauses(x: int) -> string {
+    MayFailIntOrString(x) catch (e) {
+        _: string => "first handler",
+    } catch (e2) {
+        _: int => "second handler",
+    }
+}
+
+function SingleCatchWildcard(x: int) -> string {
+    MayFail(x) catch (e) {
+        _ => "caught",
+    }
+}
+
+function ThrowStatement(x: int) -> string {
+    throw "error";
+    "unreachable"
+}
+
+function MayFailIntOrString(x: int) -> string {
+    match (x) {
+        0 => throw "string error",
+        1 => throw 1,
+        _ => "ok",
+    }
+}
+
+function MayFail(x: int) -> string {
+    match (x) {
+        0 => throw "string error",
+        _ => "ok",
+    }
+}
+
+function SingleCatchTyped(x: int) -> string {
+    MayFail(x) catch (e) {
+        _: string => "caught string",
+    }
+}
+
+function AlsoMayFail(x: int) -> string {
+    match (x) {
+        0 => throw "secondary error",
+        _ => "also ok",
+    }
+}
+
+function NestedCatch(x: int) -> string {
+    let inner = MayFail(x) catch (e) {
+        _ => "inner caught",
+    };
+    AlsoMayFail(x) catch (e) {
+        _ => inner,
+    }
+}
+
+function CatchWithFallback(x: int) -> string {
+    MayFailIntOrString(x) catch (e) {
+        _: string => "caught string",
+    } catch (e2) {
+        _: int => "caught int fallback",
+    }
+}
+
+function MultipleCatchArms(x: int) -> string {
+    MayFailIntOrString(x) catch (e) {
+        _: string => "caught string",
+        _: int => "caught int",
+    }
+}

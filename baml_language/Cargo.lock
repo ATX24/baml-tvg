@@ -401,6 +401,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "baml_compiler_analysis"
+version = "0.0.0-beta"
+dependencies = [
+ "insta",
+]
+
+[[package]]
 name = "baml_compiler_diagnostics"
 version = "0.0.0-beta"
 dependencies = [
@@ -500,12 +507,14 @@ version = "0.0.0-beta"
 dependencies = [
  "baml_base",
  "baml_builtins",
+ "baml_compiler_analysis",
  "baml_compiler_diagnostics",
  "baml_compiler_hir",
  "baml_compiler_parser",
  "baml_compiler_syntax",
  "baml_workspace",
  "indexmap",
+ "la-arena",
  "minijinja",
  "rowan 0.16.1",
  "salsa",
@@ -524,6 +533,7 @@ dependencies = [
  "baml_compiler_tir",
  "baml_type",
  "baml_workspace",
+ "indexmap",
  "insta",
  "la-arena",
  "pretty_assertions",
@@ -812,9 +822,11 @@ version = "0.0.0-beta"
 dependencies = [
  "async-trait",
  "baml_base",
+ "baml_builtins",
  "baml_compiler_diagnostics",
  "baml_compiler_emit",
  "baml_db",
+ "baml_fmt",
  "baml_lsp_actions",
  "baml_project",
  "baml_workspace",
@@ -957,7 +969,9 @@ dependencies = [
 name = "bridge_ctypes"
 version = "0.1.0"
 dependencies = [
+ "baml_type",
  "bex_project",
+ "bex_resource_types",
  "indexmap",
  "prost",
  "prost-build",
@@ -973,6 +987,7 @@ dependencies = [
  "bex_project",
  "bridge_cffi",
  "bridge_ctypes",
+ "log",
  "prost",
  "pyo3",
  "pyo3-async-runtimes",

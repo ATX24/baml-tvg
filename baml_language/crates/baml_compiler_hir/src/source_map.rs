@@ -13,7 +13,7 @@ use baml_base::{FileId, Name, Span};
 use baml_compiler_diagnostics::ErrorContext;
 use rowan::TextRange;
 
-use crate::{ExprId, MatchArmId, MatchArmSpans, PatId, StmtId, TypeId};
+use crate::{CatchArmId, CatchArmSpans, ExprId, MatchArmId, MatchArmSpans, PatId, StmtId, TypeId};
 
 // ============================================================================
 // Span Resolution Context
@@ -65,6 +65,8 @@ pub enum ErrorLocation {
     Expr(ExprId),
     /// Error at a match arm (for unreachable arm errors).
     MatchArm(MatchArmId),
+    /// Error at a catch arm (for unreachable arm errors).
+    CatchArm(CatchArmId),
     /// Error at a top-level type item (type alias or class).
     ///
     /// Used for validation errors about type definitions (e.g., cycle detection).
@@ -123,6 +125,11 @@ impl ErrorLocation {
             ErrorLocation::MatchArm(id) => ctx
                 .expr_fn_source_map
                 .match_arm_spans(*id)
+                .map(|s| s.arm_span)
+                .unwrap_or_default(),
+            ErrorLocation::CatchArm(id) => ctx
+                .expr_fn_source_map
+                .catch_arm_spans(*id)
                 .map(|s| s.arm_span)
                 .unwrap_or_default(),
             ErrorLocation::TypeItem(name) => ctx
@@ -188,6 +195,12 @@ impl From<MatchArmId> for ErrorLocation {
     }
 }
 
+impl From<CatchArmId> for ErrorLocation {
+    fn from(id: CatchArmId) -> Self {
+        ErrorLocation::CatchArm(id)
+    }
+}
+
 impl From<Span> for ErrorLocation {
     fn from(span: Span) -> Self {
         ErrorLocation::Span(span)
@@ -233,6 +246,9 @@ pub struct HirSourceMap {
 
     /// Match arm spans
     match_arm_spans: HashMap<MatchArmId, MatchArmSpans>,
+
+    /// Catch arm spans
+    catch_arm_spans: HashMap<CatchArmId, CatchArmSpans>,
 
     /// Type annotation spans
     type_spans: HashMap<TypeId, Span>,
@@ -301,6 +317,20 @@ impl HirSourceMap {
     }
 
     // ========================================================================
+    // Catch arm mappings
+    // ========================================================================
+
+    /// Insert catch arm spans.
+    pub fn insert_catch_arm(&mut self, id: CatchArmId, spans: CatchArmSpans) {
+        self.catch_arm_spans.insert(id, spans);
+    }
+
+    /// Get the spans for a catch arm.
+    pub fn catch_arm_spans(&self, id: CatchArmId) -> Option<CatchArmSpans> {
+        self.catch_arm_spans.get(&id).copied()
+    }
+
+    // ========================================================================
     // Type annotation mappings
     // ========================================================================
 
@@ -329,6 +359,9 @@ pub struct SignatureSourceMap {
     /// Span of the return type annotation
     return_type_span: Option<TextRange>,
 
+    /// Span of the throws clause type annotation
+    throws_type_span: Option<TextRange>,
+
     /// Spans of parameters (entire param including name), indexed by position
     param_spans: Vec<Option<TextRange>>,
 
@@ -350,6 +383,16 @@ impl SignatureSourceMap {
     /// Get the return type span.
     pub fn return_type_span(&self) -> Option<TextRange> {
         self.return_type_span
+    }
+
+    /// Set the throws clause type span.
+    pub fn set_throws_type_span(&mut self, span: TextRange) {
+        self.throws_type_span = Some(span);
+    }
+
+    /// Get the throws clause type span.
+    pub fn throws_type_span(&self) -> Option<TextRange> {
+        self.throws_type_span
     }
 
     /// Add a parameter span (entire parameter including name).

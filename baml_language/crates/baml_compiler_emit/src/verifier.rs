@@ -157,7 +157,9 @@ mod tests {
     fn local(name: &str) -> LocalDecl {
         LocalDecl {
             name: Some(Name::new(name)),
-            ty: Ty::Int,
+            ty: Ty::Int {
+                attr: baml_type::TyAttr::default(),
+            },
             span: None,
             scope_span: None,
             is_watched: false,
@@ -167,7 +169,9 @@ mod tests {
     fn local_watched(name: &str) -> LocalDecl {
         LocalDecl {
             name: Some(Name::new(name)),
-            ty: Ty::Int,
+            ty: Ty::Int {
+                attr: baml_type::TyAttr::default(),
+            },
             span: None,
             scope_span: None,
             is_watched: true,
@@ -189,6 +193,7 @@ mod tests {
         let mut mir = MirFunction {
             name: Name::new("f"),
             arity: 0,
+            unwind_error_locals: std::collections::HashMap::new(),
             blocks: vec![
                 BasicBlock {
                     id: BlockId(0),
@@ -237,6 +242,7 @@ mod tests {
         let mut mir = MirFunction {
             name: Name::new("f"),
             arity: 0,
+            unwind_error_locals: std::collections::HashMap::new(),
             blocks: vec![
                 BasicBlock {
                     id: BlockId(0),
@@ -283,6 +289,7 @@ mod tests {
         let mut mir = MirFunction {
             name: Name::new("f"),
             arity: 0,
+            unwind_error_locals: std::collections::HashMap::new(),
             blocks: vec![BasicBlock {
                 id: BlockId(0),
                 statements: vec![],

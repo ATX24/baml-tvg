@@ -98,6 +98,8 @@ pub enum DiagnosticId {
     // Pattern matching errors (E0062-E0066)
     NonExhaustiveMatch,
     UnreachableArm,
+    NonExhaustiveCatch,
+    UnreachableCatchArm,
     UnknownEnumVariant,
     WatchOnNonVariable,
     WatchOnUnwatchedVariable,
@@ -159,6 +161,13 @@ pub enum DiagnosticId {
     JinjaInvalidSyntax,
     JinjaInvalidTest,
 
+    // Catch binding errors (E0093)
+    InvalidCatchBindingType,
+
+    // Throws contract errors (E0096-E0097)
+    ThrowsContractViolation,
+    ThrowsContractExtraneous,
+
     // VIR lowering errors (E0089)
     LoweringError,
 }
@@ -215,6 +224,8 @@ impl DiagnosticId {
             // Pattern matching errors
             DiagnosticId::NonExhaustiveMatch => "E0062",
             DiagnosticId::UnreachableArm => "E0063",
+            DiagnosticId::NonExhaustiveCatch => "E0094",
+            DiagnosticId::UnreachableCatchArm => "E0095",
             DiagnosticId::UnknownEnumVariant => "E0064",
             DiagnosticId::WatchOnNonVariable => "E0065",
             DiagnosticId::WatchOnUnwatchedVariable => "E0066",
@@ -275,6 +286,13 @@ impl DiagnosticId {
             DiagnosticId::JinjaUnsupportedFeature => "E0085",
             DiagnosticId::JinjaInvalidSyntax => "E0086",
             DiagnosticId::JinjaInvalidTest => "E0087",
+
+            // Catch binding errors
+            DiagnosticId::InvalidCatchBindingType => "E0093",
+
+            // Throws contract errors
+            DiagnosticId::ThrowsContractViolation => "E0096",
+            DiagnosticId::ThrowsContractExtraneous => "E0097",
 
             // VIR lowering errors
             DiagnosticId::LoweringError => "E0089",

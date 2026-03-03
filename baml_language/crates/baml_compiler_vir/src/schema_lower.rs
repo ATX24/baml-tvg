@@ -2,7 +2,7 @@
 
 use std::collections::{HashMap, HashSet};
 
-use baml_base::{Name, Span};
+use baml_base::{FieldAttr, Name, Span};
 use baml_compiler_hir::{
     self, Attribute, FunctionBody, ItemId, file_item_tree, file_items, function_body,
     function_signature,
@@ -103,7 +103,9 @@ fn convert_ty(
 ) -> Ty {
     baml_type::convert_tir_ty(tir_ty, type_aliases, recursive_aliases)
         .and_then(baml_type::sanitize_for_runtime)
-        .unwrap_or(Ty::Null)
+        .unwrap_or(Ty::Null {
+            attr: baml_type::TyAttr::default(),
+        })
 }
 
 fn lower_class(
@@ -123,6 +125,7 @@ fn lower_class(
                 description: attr_to_option(&field.description),
                 alias: attr_to_option(&field.alias),
                 skip: attr_to_bool(&field.skip),
+                field_attr: FieldAttr::default(),
             }
         })
         .collect();
@@ -133,6 +136,7 @@ fn lower_class(
         is_dynamic: attr_to_bool(&class.is_dynamic),
         description: attr_to_option(&class.description),
         alias: attr_to_option(&class.alias),
+        ty_attr: class.ty_attr.clone(),
     }
 }
 
@@ -153,6 +157,7 @@ fn lower_enum(enum_def: &baml_compiler_hir::Enum) -> VirEnum {
         variants,
         description: None, // HIR Enum has no @@description
         alias: attr_to_option(&enum_def.alias),
+        ty_attr: enum_def.ty_attr.clone(),
     }
 }
 

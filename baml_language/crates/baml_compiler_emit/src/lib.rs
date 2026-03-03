@@ -50,7 +50,7 @@ pub(crate) struct MirCodegenContext<'ctx, 'obj> {
 
 use std::collections::{HashMap, HashSet};
 
-use baml_base::{Name, SourceFile, Span};
+use baml_base::{FieldAttr, Name, SourceFile, Span};
 use baml_compiler_hir::{
     self, ItemId, function_body, function_qualified_name, function_signature,
     function_signature_source_map, template_string_body, template_string_signature,
@@ -175,13 +175,16 @@ pub fn compile_files(
             let tir_ty = baml_compiler_tir::builtins::substitute_unknown(&field.ty);
             let field_ty = baml_type::convert_tir_ty(&tir_ty, &type_aliases, &recursive_aliases)
                 .and_then(baml_type::sanitize_for_runtime)
-                .unwrap_or(baml_type::Ty::Null);
+                .unwrap_or(baml_type::Ty::Null {
+                    attr: baml_type::TyAttr::default(),
+                });
 
             fields.push(ClassField {
                 name: field.name.to_string(),
                 field_type: field_ty,
                 description: None,
                 alias: None,
+                field_attr: FieldAttr::default(),
             });
 
             // Only add public fields to field_types (for type checking)
@@ -204,6 +207,7 @@ pub fn compile_files(
             description: None,
             alias: None,
             type_tag,
+            ty_attr: baml_type::TyAttr::default(),
         });
         class_type_tag_counter += 1;
         let class_obj_idx = program.add_object(class_obj);
@@ -244,13 +248,16 @@ pub fn compile_files(
                     let runtime_ty =
                         baml_type::convert_tir_ty(&ty, &type_aliases, &recursive_aliases)
                             .and_then(baml_type::sanitize_for_runtime)
-                            .unwrap_or(baml_type::Ty::Null);
+                            .unwrap_or(baml_type::Ty::Null {
+                                attr: baml_type::TyAttr::default(),
+                            });
 
                     fields.push(ClassField {
                         name: field.name.to_string(),
                         field_type: runtime_ty,
                         description: field.description.value().cloned(),
                         alias: field.alias.value().cloned(),
+                        field_attr: FieldAttr::default(),
                     });
                 }
 
@@ -265,6 +272,7 @@ pub fn compile_files(
                     description: class.description.value().cloned(),
                     alias: class.alias.value().cloned(),
                     type_tag,
+                    ty_attr: class.ty_attr.clone(),
                 });
                 class_type_tag_counter += 1;
                 let class_obj_idx = program.add_object(class_obj);
@@ -310,6 +318,7 @@ pub fn compile_files(
                     variants,
                     description: None, // HIR Enum doesn't carry description
                     alias: enum_def.alias.value().cloned(),
+                    ty_attr: enum_def.ty_attr.clone(),
                 });
                 let enum_obj_idx = program.add_object(enum_obj);
                 enum_object_indices.insert(enum_name.clone(), enum_obj_idx);
@@ -343,6 +352,7 @@ pub fn compile_files(
             variants,
             description: None,
             alias: None,
+            ty_attr: baml_type::TyAttr::default(),
         });
         let enum_obj_idx = program.add_object(enum_obj);
         enum_object_indices.insert(builtin_enum.path.to_string(), enum_obj_idx);
@@ -373,7 +383,9 @@ pub fn compile_files(
         let tir_ty = baml_compiler_tir::builtins::substitute_unknown(&builtin.returns);
         let return_type = baml_type::convert_tir_ty(&tir_ty, &type_aliases, &recursive_aliases)
             .and_then(baml_type::sanitize_for_runtime)
-            .unwrap_or(baml_type::Ty::Null);
+            .unwrap_or(baml_type::Ty::Null {
+                attr: baml_type::TyAttr::default(),
+            });
 
         let builtin_fn = Function {
             name: builtin.path.to_string(),
@@ -448,7 +460,9 @@ pub fn compile_files(
                             span: baml_base::Span::fake(),
                             block_notifications: Vec::new(),
                             viz_nodes: Vec::new(),
-                            return_type: baml_type::Ty::Null,
+                            return_type: baml_type::Ty::Null {
+                                attr: baml_type::TyAttr::default(),
+                            },
                             param_names: Vec::new(),
                             param_types: Vec::new(),
                             body_meta: None,
@@ -706,7 +720,9 @@ pub fn compile_files(
                             let ty = param_types
                                 .and_then(|m| m.get(k.as_str()))
                                 .cloned()
-                                .unwrap_or(baml_type::Ty::Null);
+                                .unwrap_or(baml_type::Ty::Null {
+                                    attr: baml_type::TyAttr::default(),
+                                });
                             (k.clone(), convert_hir_test_arg(v, &ty))
                         })
                         .collect();
@@ -764,8 +780,10 @@ fn convert_hir_test_arg(
         baml_compiler_hir::TestArgValue::String(s) => bex_vm_types::TestArgValue::String(s.clone()),
         baml_compiler_hir::TestArgValue::Array(arr) => {
             let element_type = match ty {
-                baml_type::Ty::List(elem) => elem.as_ref().clone(),
-                _ => baml_type::Ty::Null,
+                baml_type::Ty::List(elem, _) => elem.as_ref().clone(),
+                _ => baml_type::Ty::Null {
+                    attr: baml_type::TyAttr::default(),
+                },
             };
             bex_vm_types::TestArgValue::Array {
                 element_type: element_type.clone(),
@@ -777,8 +795,17 @@ fn convert_hir_test_arg(
         }
         baml_compiler_hir::TestArgValue::Map(map) => {
             let (key_type, value_type) = match ty {
-                baml_type::Ty::Map { key, value } => (key.as_ref().clone(), value.as_ref().clone()),
-                _ => (baml_type::Ty::String, baml_type::Ty::Null),
+                baml_type::Ty::Map { key, value, .. } => {
+                    (key.as_ref().clone(), value.as_ref().clone())
+                }
+                _ => (
+                    baml_type::Ty::String {
+                        attr: baml_type::TyAttr::default(),
+                    },
+                    baml_type::Ty::Null {
+                        attr: baml_type::TyAttr::default(),
+                    },
+                ),
             };
             bex_vm_types::TestArgValue::Map {
                 key_type,
@@ -814,13 +841,17 @@ fn compute_function_metadata(
             let (ty, _) = resolution_ctx.lower_type_ref(&p.type_ref, Span::default());
             baml_type::convert_tir_ty(&ty, type_aliases, recursive_aliases)
                 .and_then(baml_type::sanitize_for_runtime)
-                .unwrap_or(baml_type::Ty::Null)
+                .unwrap_or(baml_type::Ty::Null {
+                    attr: baml_type::TyAttr::default(),
+                })
         })
         .collect();
     let (ret_ty, _) = resolution_ctx.lower_type_ref(&signature.return_type, Span::default());
     let return_type = baml_type::convert_tir_ty(&ret_ty, type_aliases, recursive_aliases)
         .and_then(baml_type::sanitize_for_runtime)
-        .unwrap_or(baml_type::Ty::Null);
+        .unwrap_or(baml_type::Ty::Null {
+            attr: baml_type::TyAttr::default(),
+        });
     (param_names, param_types, return_type)
 }
 
@@ -863,6 +894,7 @@ fn build_typing_context(
                 let func_type = baml_compiler_tir::Ty::Function {
                     params,
                     ret: Box::new(return_type),
+                    attr: baml_base::TyAttr::default(),
                 };
 
                 // Use the display name as the key (e.g., "baml.llm.render_prompt" or "my_func")

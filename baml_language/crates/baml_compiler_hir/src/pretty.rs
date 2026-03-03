@@ -6,7 +6,8 @@
 use std::fmt::Write;
 
 use crate::{
-    AssignOp, BinaryOp, Expr, ExprBody, ExprId, Literal, Pattern, Stmt, StmtId, TypeRef, UnaryOp,
+    AssignOp, BinaryOp, CatchClauseKind, Expr, ExprBody, ExprId, Literal, Pattern, Stmt, StmtId,
+    TypeRef, UnaryOp,
 };
 
 /// Renders an expression body as code.
@@ -195,6 +196,34 @@ impl<'a> CodePrinter<'a> {
                 self.print_expr(*index);
                 self.output.push(']');
             }
+            Expr::Catch { base, clauses } => {
+                self.print_expr(*base);
+                for clause in clauses {
+                    let kw = match clause.kind {
+                        CatchClauseKind::Catch => "catch",
+                        CatchClauseKind::CatchAll => "catch_all",
+                    };
+                    write!(self.output, " {kw} (").unwrap();
+                    self.print_pattern(clause.binding);
+                    self.output.push_str(") {\n");
+                    self.indent += 1;
+                    for arm_id in &clause.arms {
+                        let arm = &self.body.catch_arms[*arm_id];
+                        self.write_indent();
+                        self.print_pattern(arm.pattern);
+                        self.output.push_str(" => ");
+                        self.print_expr(arm.body);
+                        self.output.push_str(",\n");
+                    }
+                    self.indent -= 1;
+                    self.write_indent();
+                    self.output.push('}');
+                }
+            }
+            Expr::Throw { value } => {
+                self.output.push_str("throw ");
+                self.print_expr(*value);
+            }
             Expr::Missing => {
                 self.output.push_str("<missing>");
             }
@@ -243,6 +272,7 @@ impl<'a> CodePrinter<'a> {
                 type_annotation,
                 initializer,
                 is_watched,
+                ..
             } => {
                 if *is_watched {
                     self.output.push_str("watch let ");
@@ -305,6 +335,11 @@ impl<'a> CodePrinter<'a> {
             Stmt::Assert { condition } => {
                 self.output.push_str("assert ");
                 self.print_expr(*condition);
+                self.output.push(';');
+            }
+            Stmt::Throw { value } => {
+                self.output.push_str("throw ");
+                self.print_expr(*value);
                 self.output.push(';');
             }
             Stmt::Missing => {
@@ -522,6 +557,7 @@ fn type_ref_to_str_impl(ty: &TypeRef, wrap_union: bool) -> String {
         TypeRef::Error => "<error>".to_string(),
         TypeRef::Unknown => "<unknown>".to_string(),
         TypeRef::BuiltinUnknown => "unknown".to_string(),
+        TypeRef::Never => "never".to_string(),
         TypeRef::Type => "type".to_string(),
     }
 }

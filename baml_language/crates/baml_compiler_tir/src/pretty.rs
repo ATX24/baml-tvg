@@ -232,6 +232,10 @@ impl<'a> TreeRenderer<'a> {
             Expr::Match { arms, .. } => {
                 format!("Match({} arms): {}", arms.len(), ty)
             }
+            Expr::Catch { clauses, .. } => {
+                format!("Catch({} clauses): {}", clauses.len(), ty)
+            }
+            Expr::Throw { .. } => format!("Throw: {ty}"),
             Expr::Missing => format!("<missing>: {ty}"),
         }
     }
@@ -360,6 +364,40 @@ impl<'a> TreeRenderer<'a> {
                     self.pop_continuation();
                 }
             }
+            Expr::Catch { base, clauses } => {
+                // Render the base expression
+                self.render_expr(*base, body, result, clauses.is_empty());
+
+                // Render each catch clause's arms
+                for (ci, clause) in clauses.iter().enumerate() {
+                    let is_last_clause = ci == clauses.len() - 1;
+                    let kind_str = match clause.kind {
+                        baml_compiler_hir::CatchClauseKind::Catch => "catch",
+                        baml_compiler_hir::CatchClauseKind::CatchAll => "catch_all",
+                    };
+                    let clause_prefix = self.make_prefix(is_last_clause);
+                    writeln!(
+                        self.output,
+                        "{clause_prefix}{kind_str}({} arms):",
+                        clause.arms.len()
+                    )
+                    .ok();
+                    self.push_continuation(!is_last_clause);
+                    for (ai, arm_id) in clause.arms.iter().enumerate() {
+                        let arm = &body.catch_arms[*arm_id];
+                        let is_last_arm = ai == clause.arms.len() - 1;
+                        let arm_prefix = self.make_prefix(is_last_arm);
+                        writeln!(self.output, "{arm_prefix}arm[{ai}]:").ok();
+                        self.push_continuation(!is_last_arm);
+                        self.render_expr(arm.body, body, result, true);
+                        self.pop_continuation();
+                    }
+                    self.pop_continuation();
+                }
+            }
+            Expr::Throw { value } => {
+                self.render_expr(*value, body, result, true);
+            }
             Expr::Literal(_) | Expr::Path(_) | Expr::Missing => {
                 // Leaf nodes, no children
             }
@@ -482,6 +520,12 @@ impl<'a> TreeRenderer<'a> {
             Stmt::HeaderComment { name, level } => {
                 writeln!(self.output, "{prefix}HeaderComment({name}, level={level})").ok();
             }
+            Stmt::Throw { value } => {
+                writeln!(self.output, "{prefix}Throw").ok();
+                self.push_continuation(!is_last);
+                self.render_expr(*value, body, result, true);
+                self.pop_continuation();
+            }
         }
     }
 
@@ -586,6 +630,8 @@ pub fn expr_to_string(expr_id: ExprId, body: &ExprBody) -> String {
         Expr::Block { .. } => "{ ... }".to_string(),
         Expr::If { .. } => "if ... { ... }".to_string(),
         Expr::Match { arms, .. } => format!("match {{ {} arms }}", arms.len()),
+        Expr::Catch { clauses, .. } => format!("catch {{ {} clauses }}", clauses.len()),
+        Expr::Throw { .. } => "throw ...".to_string(),
         Expr::Missing => "<missing>".to_string(),
     }
 }
@@ -648,6 +694,7 @@ pub fn short_display(error: &TirTypeError) -> String {
             format!("Non-exhaustive match on {scrutinee_type}: missing {missing}")
         }
         TypeError::UnreachableArm { .. } => "Unreachable match arm".to_string(),
+        TypeError::UnreachableCatchArm { .. } => "Unreachable catch arm".to_string(),
         TypeError::UnknownEnumVariant {
             enum_name,
             variant_name,
@@ -662,6 +709,26 @@ pub fn short_display(error: &TirTypeError) -> String {
         TypeError::MissingReturnExpression { expected, .. } => {
             format!(
                 "Missing return expression. Function expects `{expected}` but body has no final expression."
+            )
+        }
+        TypeError::NonExhaustiveCatch {
+            unhandled_types, ..
+        } => {
+            format!(
+                "Non-exhaustive catch chain: unhandled throw types {}",
+                unhandled_types.join(", ")
+            )
+        }
+        TypeError::ThrowsContractViolation { extra_types, .. } => {
+            format!(
+                "Function throws types not covered by `throws` declaration: {}",
+                extra_types.join(", ")
+            )
+        }
+        TypeError::ThrowsContractExtraneous { unused_types, .. } => {
+            format!(
+                "`throws` declaration includes types the function never throws: {}",
+                unused_types.join(", ")
             )
         }
         TypeError::InvalidMapKeyType { ty, .. } => {
@@ -824,6 +891,9 @@ pub fn short_display(error: &TirTypeError) -> String {
         TypeError::JinjaUnsupportedFeature { feature, .. } => {
             format!("{feature} are not yet supported")
         }
+        TypeError::InvalidCatchBindingType { type_name, .. } => {
+            format!("Type `{type_name}` is not allowed in catch bindings")
+        }
         TypeError::JinjaInvalidSyntax { message, .. } => message.clone(),
         TypeError::JinjaInvalidTest {
             test_name,
@@ -844,5 +914,45 @@ pub fn short_display(error: &TirTypeError) -> String {
                 )
             }
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn make_arena_and_ids() -> (la_arena::Arena<Expr>, ExprId, ExprId) {
+        let mut arena = la_arena::Arena::new();
+        let id0 = arena.alloc(Expr::Missing);
+        let id1 = arena.alloc(Expr::Missing);
+        (arena, id0, id1)
+    }
+
+    #[test]
+    fn describe_catch_expr_zero_clauses() {
+        let (_arena, base_id, _) = make_arena_and_ids();
+        let expr = Expr::Catch {
+            base: base_id,
+            clauses: vec![],
+        };
+        assert_eq!(
+            TreeRenderer::describe_expr(&expr, "string"),
+            "Catch(0 clauses): string"
+        );
+    }
+
+    #[test]
+    fn describe_throw_expr() {
+        let (_arena, val_id, _) = make_arena_and_ids();
+        let expr = Expr::Throw { value: val_id };
+        assert_eq!(TreeRenderer::describe_expr(&expr, "?"), "Throw: ?");
+    }
+
+    #[test]
+    fn describe_missing_expr() {
+        assert_eq!(
+            TreeRenderer::describe_expr(&Expr::Missing, "?"),
+            "<missing>: ?"
+        );
     }
 }
