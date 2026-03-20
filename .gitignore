@@ -148,6 +148,12 @@ pnpm-debug.log*
 pyvenv.cfg
 report.[0-9]*.[0-9]*.[0-9]*.[0-9]*.json
 sample/baml_client/*target
+integ-tests/java/baml_client/
+examples/java-gradle/baml_client/
+examples/java-maven/baml_client/
+
+# Vite dev server temp files
+vite.config.ts.timestamp-*.mjs
 test_logs/**
 tmp
 tmp/
@@ -185,3 +191,5 @@ _site/
 # claude
 .claude/
 rpi/
+examples/java-gradle/.gradle/
+examples/java-gradle/build/

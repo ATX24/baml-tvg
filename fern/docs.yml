@@ -331,6 +331,9 @@ navigation:
           - page: Go
             icon: fa-brands fa-golang
             path: 01-guide/02-languages/go.mdx
+          - page: Java
+            icon: fa-brands fa-java
+            path: 01-guide/02-languages/java.mdx
           - page: Ruby
             icon: fa-regular fa-gem
             path: 01-guide/02-languages/ruby.mdx

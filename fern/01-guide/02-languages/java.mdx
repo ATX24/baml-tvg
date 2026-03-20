@@ -1,0 +1,384 @@
+---
+title: Java
+---
+
+<Note>
+  The Java SDK is currently in **early access**. APIs may change between releases.
+  Check out the [example projects on GitHub](https://github.com/BoundaryML/baml/tree/canary/examples) for working demos.
+</Note>
+
+To set up BAML with Java do the following:
+
+<Steps>
+  ### Install BAML VSCode/Cursor Extension
+      https://marketplace.visualstudio.com/items?itemName=boundary.baml-extension
+
+      - syntax highlighting
+      - testing playground
+      - prompt previews
+
+  ### Install the BAML CLI
+      Download and install the `baml-cli` binary for your platform from the [GitHub releases page](https://github.com/BoundaryML/baml/releases), or build it from source:
+
+      ```bash
+      cargo install baml-cli
+      ```
+
+      Then initialize a new BAML project in your repo:
+
+      ```bash
+      baml-cli init
+      ```
+
+      This will create a `baml_src/` directory with a starter `.baml` schema and a `generators.baml` file.
+
+  ### Add the BAML Java Runtime
+
+      The runtime library is published to Maven Central. Add it to your build file:
+
+      <Tabs>
+        <Tab title="Maven" language="xml">
+          ```xml pom.xml
+          <dependency>
+            <groupId>io.github.arckansupada</groupId>
+            <artifactId>baml-runtime-java</artifactId>
+            <version>0.220.0</version>
+          </dependency>
+          ```
+        </Tab>
+
+        <Tab title="Gradle" language="groovy">
+          ```groovy build.gradle
+          dependencies {
+            implementation 'io.github.arckansupada:baml-runtime-java:0.220.0'
+          }
+          ```
+        </Tab>
+
+        <Tab title="Gradle (Kotlin DSL)" language="kotlin">
+          ```kotlin build.gradle.kts
+          dependencies {
+            implementation("io.github.arckansupada:baml-runtime-java:0.220.0")
+          }
+          ```
+        </Tab>
+      </Tabs>
+
+      The library requires **Java 11+** and depends on [JNA](https://github.com/java-native-access/jna) to load the native `libbaml_cffi` shared library at runtime.
+
+  ### Install the Native Library
+
+      BAML's Java SDK calls into a native Rust library (`libbaml_cffi`) via JNA. You must make this library available at runtime.
+
+      **Option A — Set `BAML_LIBRARY_PATH` (recommended for development)**
+
+      Point the environment variable at the pre-built `.so` / `.dylib` / `.dll`:
+
+      ```bash
+      # Linux
+      export BAML_LIBRARY_PATH=/path/to/libbaml_cffi.so
+
+      # macOS
+      export BAML_LIBRARY_PATH=/path/to/libbaml_cffi.dylib
+
+      # Windows
+      set BAML_LIBRARY_PATH=C:\path\to\baml_cffi.dll
+      ```
+
+      **Option B — Place on the system library path**
+
+      Copy the library to a directory on `LD_LIBRARY_PATH` (Linux), `DYLD_LIBRARY_PATH` (macOS), or `PATH` (Windows), or bundle it alongside your JAR.
+
+      Pre-built binaries are available on the [GitHub releases page](https://github.com/BoundaryML/baml/releases).
+
+  ### Configure the Generator
+
+      In your `baml_src/generators.baml` file, set the output language to `java`:
+
+      ```baml baml_src/generators.baml
+      generator MyJavaClient {
+        output_type java
+        output_dir "../baml_client"
+        // Optional: override the default package name
+        // package_name "com.example.baml_client"
+      }
+      ```
+
+  ### Generate the `baml_client` Java package from `.baml` files
+
+      One of the files in your `baml_src` directory will have a [generator block](/ref/baml/generator). Run code generation to produce type-safe Java wrappers for all your BAML functions:
+
+      ```bash
+      baml-cli generate
+      ```
+
+      This creates a `baml_client/` directory containing:
+      - `Functions.java` — one method per BAML function (blocking + streaming variants)
+      - `Types.java` — Java classes mirroring your BAML `class` definitions
+      - `Enums.java` — Java enums mirroring your BAML `enum` definitions
+      - `Globals.java` — singleton runtime initializer
+
+      You must add `baml_client/` to your build's source roots:
+
+      <Tabs>
+        <Tab title="Maven" language="xml">
+          ```xml pom.xml
+          <plugin>
+            <groupId>org.codehaus.mojo</groupId>
+            <artifactId>build-helper-maven-plugin</artifactId>
+            <version>3.4.0</version>
+            <executions>
+              <execution>
+                <id>add-baml-client-sources</id>
+                <phase>generate-sources</phase>
+                <goals><goal>add-source</goal></goals>
+                <configuration>
+                  <sources>
+                    <source>${project.basedir}/baml_client</source>
+                  </sources>
+                </configuration>
+              </execution>
+            </executions>
+          </plugin>
+          ```
+        </Tab>
+
+        <Tab title="Gradle" language="groovy">
+          ```groovy build.gradle
+          sourceSets {
+            main {
+              java {
+                srcDirs 'src/main/java', 'baml_client'
+              }
+            }
+          }
+          ```
+        </Tab>
+      </Tabs>
+
+      See [What is baml_client](/guide/introduction/baml_client) to learn more about how this works.
+
+      <Tip>
+        If you set up the [VSCode extension](https://marketplace.visualstudio.com/items?itemName=Boundary.baml-extension), it will automatically run `baml-cli generate` on saving a BAML file.
+      </Tip>
+
+  ### Use a BAML function in Java!
+
+      <Error>If `baml_client` doesn't exist, make sure to run the previous step!</Error>
+
+      Every BAML function gets **three** generated methods: blocking, async, and streaming.
+
+      ```java Main.java
+      import static baml_client.Functions.B;
+      import baml_client.types.Resume;
+      import baml_client.stream_types.PartialResume;
+      import com.boundaryml.baml.BamlStream;
+      import java.util.concurrent.CompletableFuture;
+
+      public class Main {
+          public static void main(String[] args) throws Exception {
+
+              String rawResume = "Jane Doe\nSoftware Engineer\n5 years at Acme Corp...";
+
+              // --- Blocking call ---
+              // BAML's internal parser guarantees ExtractResume always returns a Resume
+              Resume resume = B.ExtractResume(rawResume);
+              System.out.println("Name: " + resume.getName());
+
+              // --- Async call ---
+              // Returns immediately; the LLM call runs on a background thread
+              CompletableFuture<Resume> future = B.ExtractResumeAsync(rawResume);
+              future.thenAccept(r -> System.out.println("Async name: " + r.getName()));
+
+              // --- Streaming call ---
+              BamlStream<PartialResume, Resume> stream = B.ExtractResumeStream(rawResume);
+
+              for (PartialResume partial : stream) {
+                  // Partial results arrive as the LLM streams tokens
+                  System.out.println("Partial name: " + partial.getName());
+              }
+
+              Resume finalResume = stream.getFinalResult();
+              System.out.println("Final: " + finalResume.getName());
+
+              // Wait for the async call before exiting
+              future.join();
+          }
+      }
+      ```
+</Steps>
+
+
+## Async
+
+Every BAML function automatically gets an `*Async` variant that returns a `CompletableFuture<T>`. The calling thread is never blocked — the LLM call runs on a dedicated BAML background thread pool (`baml-async-N` daemon threads).
+
+```java
+import java.util.concurrent.CompletableFuture;
+
+// Fire and forget — calling thread continues immediately
+CompletableFuture<Resume> future = B.ExtractResumeAsync(rawResume);
+
+// Chain follow-up work without blocking
+future.thenAccept(resume -> System.out.println("Done: " + resume.getName()));
+
+// Combine multiple concurrent LLM calls
+CompletableFuture<Resume>    f1 = B.ExtractResumeAsync(resume1);
+CompletableFuture<Resume>    f2 = B.ExtractResumeAsync(resume2);
+CompletableFuture<Void>      both = CompletableFuture.allOf(f1, f2);
+both.thenRun(() -> System.out.println("Both done"));
+
+// Or block when you need the result
+Resume result = B.ExtractResumeAsync(rawResume).get();
+```
+
+<Tip>
+  In Spring WebFlux or other reactive frameworks, wrap the `CompletableFuture` with
+  `Mono.fromFuture(B.ExtractResumeAsync(input))` to integrate with the reactive pipeline.
+</Tip>
+
+
+## Streaming
+
+Every BAML function that returns a structured type automatically gets a `*Stream` variant. Streaming uses `BamlStream<PartialT, FinalT>`:
+
+```java
+BamlStream<PartialResume, Resume> stream = B.ExtractResumeStream(rawResume);
+
+// Pull-based iteration over partial results (implements Iterable<PartialT>)
+for (PartialResume partial : stream) {
+    System.out.print(".");
+}
+
+// Block until the LLM finishes and return the fully-parsed final result
+Resume final = stream.getFinalResult();
+
+// Or get it asynchronously
+CompletableFuture<Resume> future = stream.getFinalResultAsync();
+future.thenAccept(r -> System.out.println("Done: " + r.getName()));
+```
+
+Partial types mirror their final counterparts but have all fields optional (`null`-able), reflecting the fact that the LLM may not have generated them yet.
+
+
+## Error Handling
+
+BAML throws `BamlException` (an unchecked `RuntimeException`) on failures:
+
+```java
+import com.boundaryml.baml.BamlException;
+
+try {
+    Resume resume = B.ExtractResume(rawResume);
+} catch (BamlException e) {
+    System.err.println("BAML error: " + e.getMessage());
+}
+```
+
+Common failure modes:
+- LLM API errors (invalid key, rate limits, timeouts)
+- Parse failures (LLM output didn't match the expected schema)
+- Native library not found (check `BAML_LIBRARY_PATH`)
+
+
+## Client Registry (Runtime Overrides)
+
+You can override which LLM client is used at call time using `BamlClientRegistry`:
+
+```java
+import com.boundaryml.baml.BamlClientRegistry;
+import com.boundaryml.baml.BamlClientOptions;
+
+BamlClientRegistry registry = BamlClientRegistry.builder()
+    .primary("FastClient")
+    .client(BamlClientOptions.builder("FastClient")
+        .provider("openai")
+        .option("model", "gpt-4o-mini")
+        .option("api_key", System.getenv("OPENAI_API_KEY"))
+        .build())
+    .build();
+
+// Pass the registry as the last argument to any generated function
+Resume resume = B.ExtractResume(rawResume, registry);
+```
+
+This mirrors the [client registry](/guide/advanced/client-registry) feature available in all BAML runtimes.
+
+
+## Environment Variables
+
+BAML resolves `env.VAR_NAME` references in your `.baml` files from `System.getenv()` automatically — no extra setup needed. Just make sure the required variables are set before calling any BAML function:
+
+```bash
+export OPENAI_API_KEY=sk-...
+export ANTHROPIC_API_KEY=sk-ant-...
+```
+
+
+## Project Structure
+
+A typical Java project using BAML looks like this:
+
+```
+my-project/
+├── baml_src/
+│   ├── generators.baml     # generator config (output_type java)
+│   ├── clients.baml        # LLM client definitions
+│   └── resume.baml         # your BAML functions and types
+├── baml_client/            # ← auto-generated, do not edit
+│   ├── Functions.java
+│   ├── Globals.java
+│   ├── Types.java
+│   └── Enums.java
+└── src/main/java/
+    └── com/example/
+        └── Main.java
+```
+
+<Tip>
+  Add `baml_client/` to your `.gitignore` — it is regenerated from `baml_src/` on every `baml-cli generate` run.
+</Tip>
+
+
+## Build Integration
+
+Automate code generation as part of your build so `baml_client` is always in sync with your `.baml` files:
+
+<Tabs>
+  <Tab title="Maven" language="xml">
+    ```xml pom.xml
+    <plugin>
+      <groupId>org.codehaus.mojo</groupId>
+      <artifactId>exec-maven-plugin</artifactId>
+      <version>3.1.0</version>
+      <executions>
+        <execution>
+          <id>baml-generate</id>
+          <phase>generate-sources</phase>
+          <goals><goal>exec</goal></goals>
+          <configuration>
+            <executable>baml-cli</executable>
+            <arguments>
+              <argument>generate</argument>
+            </arguments>
+          </configuration>
+        </execution>
+      </executions>
+    </plugin>
+    ```
+  </Tab>
+
+  <Tab title="Gradle" language="groovy">
+    ```groovy build.gradle
+    task bamlGenerate(type: Exec) {
+        commandLine 'baml-cli', 'generate'
+    }
+
+    compileJava.dependsOn bamlGenerate
+    ```
+  </Tab>
+</Tabs>
+
+---
+
+You're all set! Continue on to the [Deployment Guides](/guide/development/deploying/docker) to learn how to deploy your BAML application, or check out the [Interactive Examples](https://baml-examples.vercel.app/) to see more.

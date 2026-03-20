@@ -1,0 +1,40 @@
+syntax = "proto3";
+package baml.cffi.v1;
+
+import "baml/cffi/v1/baml_inbound.proto";
+import "baml/cffi/v1/baml_object.proto";
+import "baml/cffi/v1/baml_outbound.proto";
+
+option go_package = "./cffi";
+option java_package = "com.boundaryml.baml.cffi.v1";
+option java_multiple_files = true;
+
+message BamlObjectMethodInvocation {
+  BamlObjectHandle object = 1;
+  string method_name = 2;
+  repeated HostMapEntry kwargs = 3;
+}
+
+message BamlObjectConstructorInvocation {
+  BamlObjectType type = 1;
+  repeated HostMapEntry kwargs = 2;
+}
+
+message InvocationResponseSuccess {
+  oneof result {
+    BamlObjectHandle object = 1;
+    RepeatedBamlObjectHandle objects = 2;
+    CFFIValueHolder value = 3;
+  }
+}
+
+message RepeatedBamlObjectHandle {
+  repeated BamlObjectHandle objects = 1;
+}
+
+message InvocationResponse {
+  oneof response {
+    InvocationResponseSuccess success = 1;
+    string error = 2;
+  }
+}

@@ -1,0 +1,56 @@
+plugins {
+    id 'java'
+    id 'application'
+}
+
+group = 'com.example'
+version = '1.0-SNAPSHOT'
+
+java {
+    sourceCompatibility = JavaVersion.VERSION_11
+    targetCompatibility = JavaVersion.VERSION_11
+}
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    implementation 'io.github.arckansupada:baml-runtime-java:0.220.0'
+}
+
+// Include the generated baml_client directory as a source set
+sourceSets {
+    main {
+        java {
+            srcDirs 'src/main/java', 'baml_client'
+        }
+    }
+}
+
+application {
+    mainClass = 'com.example.Main'
+}
+
+// The Gradle daemon captures the process environment at startup.
+// Any `export VAR=...` done after the daemon started won't be visible to the
+// forked JVM unless we forward variables explicitly here.
+//
+// Two ways to pass API keys without restarting the daemon:
+//   ./gradlew run -PGOOGLE_API_KEY=...              (project property)
+//   ./gradlew run --no-daemon                        (always reads fresh env)
+//
+// Or kill the daemon first:
+//   ./gradlew --stop && ./gradlew run
+run {
+    // 1. Inherit the full environment the daemon currently has.
+    environment System.getenv()
+
+    // 2. Allow project properties to override individual keys so callers can
+    //    bypass the daemon's stale env without restarting it.
+    ['GOOGLE_API_KEY', 'BAML_LIBRARY_PATH'].each { key ->
+        if (project.hasProperty(key)) {
+            environment key, project.getProperty(key)
+        }
+    }
+}

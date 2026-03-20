@@ -8,13 +8,20 @@ from typing import Optional
 import time
 from enum import Enum
 
-from integ_tests import run_all_integ_tests, run_python_integ_tests, run_typescript_integ_tests, run_ruby_integ_tests
+from integ_tests import (
+    run_all_integ_tests,
+    run_python_integ_tests,
+    run_typescript_integ_tests,
+    run_ruby_integ_tests,
+    run_java_integ_tests,
+)
 
 class TestSuite(str, Enum):
     ALL = "all"
     PYTHON = "python"
     TYPESCRIPT = "typescript"
     RUBY = "ruby"
+    JAVA = "java"
 
 # Initialize Typer app and Rich console
 app = typer.Typer(help="BAML CLI tool for development tasks")
@@ -60,6 +67,8 @@ def integ_tests(
             run_typescript_integ_tests()
         case TestSuite.RUBY:
             run_ruby_integ_tests()
+        case TestSuite.JAVA:
+            run_java_integ_tests()
         case _:
             console.print("[bold red]Invalid test suite[/]")
             return
